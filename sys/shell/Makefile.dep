@@ -286,6 +286,23 @@ endif
 ifneq (,$(filter shell_cmd_suit,$(USEMODULE)))
   USEMODULE += suit_transport_worker
 endif
+ifneq (,$(filter shell_cmds_xipfs,$(USEMODULE)))
+  USEMODULE += gnrc_xipfs
+  #USEMODULE += shell_cmd_bgbin
+  USEMODULE += shell_cmd_cat
+  USEMODULE += shell_cmd_cp
+  #USEMODULE += shell_cmd_df
+  USEMODULE += shell_cmd_exec
+  USEMODULE += shell_cmd_fmtbin
+  USEMODULE += shell_cmd_hexdump
+  USEMODULE += shell_cmd_ldbin
+  USEMODULE += shell_cmd_ls
+  USEMODULE += shell_cmd_mkbin
+  USEMODULE += shell_cmd_put
+  USEMODULE += shell_cmd_rm
+  USEMODULE += shell_cmd_run
+  USEMODULE += shell_cmd_safe_exec
+endif
 ifneq (,$(filter shell_cmd_vfs,$(USEMODULE)))
   USEMODULE += vfs
   USEMODULE += tiny_strerror

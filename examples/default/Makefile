@@ -30,6 +30,7 @@ QUIET ?= 1
 # Modules to include:
 USEMODULE += shell
 USEMODULE += shell_cmds_default
+USEMODULE += shell_cmds_xipfs
 USEMODULE += ps
 # include and auto-initialize all available sensors
 USEMODULE += saul_default
@@ -69,3 +70,13 @@ endif
 
 # Set a custom channel if needed
 include $(RIOTMAKE)/default-radio-settings.inc.mk
+
+all:
+	echo "PIP := /Users/user/Demonstrations/pipcore-mpu/pip.elf" > /Users/user/Demonstrations/pip-mpu-separate/Makefile.config
+	echo "ROOT := $(shell pwd)/bin/dwm1001_pip/default.elf" >> /Users/user/Demonstrations/pip-mpu-separate/Makefile.config
+	make -C /Users/user/Demonstrations/pip-mpu-separate realclean all
+	cp /Users/user/Demonstrations/pip-mpu-separate/pip+root.elf bin/dwm1001_pip/pip+root.elf
+	cp /Users/user/Demonstrations/pip-mpu-separate/pip+root.bin bin/dwm1001_pip/pip+root.bin
+
+flash:
+	openocd -c 'source [find interface/jlink.cfg]' -c 'transport select swd' -f '/Users/user/Demonstrations/RIOT/boards/common/nrf52_pip/dist/openocd.cfg' -c 'tcl_port 0' -c 'telnet_port 0' -c 'gdb_port 0' -c 'init' -c 'targets' -c 'reset halt' -c 'flash write_image erase "/Users/user/Demonstrations/RIOT/examples/default/bin/dwm1001_pip/pip+root.bin" 0 ' -c 'verify_image "/Users/user/Demonstrations/RIOT/examples/default/bin/dwm1001_pip/pip+root.bin" 0' -c 'reset run' -c 'shutdown'

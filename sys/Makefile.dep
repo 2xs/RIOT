@@ -339,6 +339,10 @@ ifneq (,$(filter shell%,$(USEMODULE)))
   include $(RIOTBASE)/sys/shell/Makefile.dep
 endif
 
+ifneq (,$(filter gnrc_xipfs,$(USEMODULE)))
+  include $(RIOTBASE)/sys/gnrc_xipfs/Makefile.dep
+endif
+
 # Include all stdio_% dependencies after all USEMODULE += stdio_%
 include $(RIOTBASE)/makefiles/stdio.inc.mk
 

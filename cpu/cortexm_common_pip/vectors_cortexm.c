@@ -30,6 +30,9 @@
 #include "periph_cpu.h"
 #include "kernel_init.h"
 #include "board.h"
+#ifdef MODULE_GNRC_XIPFS
+#include "gnrc_xipfs.h"
+#endif
 #include "mpu.h"
 #include "panic.h"
 #include "sched.h"
@@ -67,6 +70,9 @@ extern uint8_t _eram;
 void *riotPartDesc;
 void *riotGotAddr;
 vidt_t *riotVidt;
+#ifdef MODULE_GNRC_XIPFS
+void *unusedRamStart;
+#endif
 
 /**
  * @brief   Pre-start routine for CPU-specific settings
@@ -85,8 +91,18 @@ __attribute__((weak)) void post_startup (void)
 /**
  * @brief   Function that will be called by the crt0.
  */
-void start(interface_t *interface, void *gotaddr)
+void start(interface_t *interface, void *gotaddr, void *oldgotaddr, void **syscalls)
 {
+    (void)oldgotaddr;
+    (void)syscalls;
+#ifdef MODULE_GNRC_XIPFS
+    #define FS_ROUND(x, y) (((x) + (y) - 1) & ~((y) - 1))
+    /* initialize the file system */
+    //fs_initialize(interface->unusedRomStart, interface->romEnd);
+    tinyfs_init((void *)0x28000, interface->romEnd);
+    unusedRamStart = (void *)FS_ROUND((uintptr_t)interface->unusedRamStart, 4096);
+#endif
+
     /* initialization of the heap */
     extern void heap_init(void *start, void *end);
     heap_init(interface->unusedRamStart, interface->ramEnd);

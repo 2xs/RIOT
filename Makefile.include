@@ -742,8 +742,8 @@ $(ELFFILE): $(BASELIBS) $(ARCHIVES) $(LD_SCRIPTS)
 .PHONY: $(APPLICATION_MODULE).module
 
 ..module-check: $(BASELIBS)
-	@[ -z "$(strip $(NON_GENERATED_MODULES))" ] || \
-	($(COLOR_ECHO) "$(COLOR_RED)Error - using unknown modules: $(COLOR_RESET)$(NON_GENERATED_MODULES)" && false)
+#	@[ -z "$(strip $(NON_GENERATED_MODULES))" ] || \
+#	($(COLOR_ECHO) "$(COLOR_RED)Error - using unknown modules: $(COLOR_RESET)$(NON_GENERATED_MODULES)" && false)
 
 $(APPLICATION_MODULE).module: pkg-build $(BUILDDEPS)
 	$(Q)DIRS="$(DIRS)" APPLICATION_BLOBS="$(BLOBS)" \

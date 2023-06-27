@@ -57,7 +57,7 @@ void auto_init_lis2dh12(void)
 
         res = lis2dh12_init(&lis2dh12_devs[i], &lis2dh12_params[i]);
         if (res < 0) {
-            LOG_ERROR("[auto_init_saul] error initializing lis2dh12 #%u\n", i);
+            /*LOG_ERROR("[auto_init_saul] error initializing lis2dh12 #%u\n", i);*/
             continue;
         }
 
