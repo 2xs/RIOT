@@ -83,10 +83,34 @@ __attribute__((weak)) void post_startup (void)
 }
 
 /**
+ * @internal
+ *
+ * @brief Retrieves the relocated GOT address contained in r10
+ *
+ * @return Returns the relocated GOT address contained in r10
+ */
+static void *get_got_addr(void)
+{
+    void *got_addr;
+
+    __asm__ inline
+    (
+        "mov %0, r10"
+        : "=r" (got_addr)
+        :
+        :
+    );
+
+    return got_addr;
+}
+
+/**
  * @brief   Function that will be called by the crt0.
  */
-void start(interface_t *interface, void *gotaddr)
+void start(interface_t *interface)
 {
+    void *got_addr;
+
     /* initialization of the heap */
     extern void heap_init(void *start, void *end);
     heap_init(interface->unusedRamStart, interface->ramEnd);
@@ -95,14 +119,17 @@ void start(interface_t *interface, void *gotaddr)
      * values only known at runtime */
     sstack = (uint32_t *)interface->stackLimit;
 
+    /* retrieve the relocated GOT address */
+    got_addr = get_got_addr();
+
     extern void cortexm_pip_ctx_init(void *sp, void *sl);
-    cortexm_pip_ctx_init(interface->stackTop, gotaddr);
+    cortexm_pip_ctx_init(interface->stackTop, got_addr);
 
     extern void cortexm_pip_vidt_init(vidt_t *vidt);
     cortexm_pip_vidt_init(interface->vidtStart);
 
     extern void nrf52_pip_ctx_init(void *sp, void *sl);
-    nrf52_pip_ctx_init(interface->stackTop, gotaddr);
+    nrf52_pip_ctx_init(interface->stackTop, got_addr);
 
     extern void nrf52_pip_vidt_init(vidt_t *vidt);
     nrf52_pip_vidt_init(interface->vidtStart);
@@ -111,7 +138,7 @@ void start(interface_t *interface, void *gotaddr)
 
     riotVidt = interface->vidtStart;
 
-    riotGotAddr = gotaddr;
+    riotGotAddr = got_addr;
 
     Pip_setIntState(1);
 
