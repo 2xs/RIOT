@@ -36,7 +36,15 @@ typedef struct {
 void cpuid_get(void *id)
 {
     cpuid_t *dest = id;
+    /**
+     * Ok, not the best implementation yet, but allows progression in porting riot over Pip-MPU for now
+     */
+#ifdef NRF52_PIP
+    *(uint32_t*)(dest.id + 0) = Pip_in(CPUID_ADDR + 0);
+    *(uint32_t*)(dest.id + 4) = Pip_in(CPUID_ADDR + 1);
+#else
     const volatile cpuid_t *src = (const void *)CPUID_ADDR;
     *dest = *src;
+#endif
 }
 #endif
