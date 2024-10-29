@@ -94,3 +94,7 @@ keys/
 
 # custom clang-tidy flags, also used when using clangd language server
 .clang-tidy
+
+# Since this is a fork of RIOT to port RIOT over Pip-MPU, don't trigger
+# GitHub workflows by pushing the .github directory
+.github/
