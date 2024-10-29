@@ -103,6 +103,7 @@ struct heap {
     char* end;
 };
 
+#ifndef MODULE_CORTEXM_COMMON_PIP
 static char *heap_top[NUM_HEAPS] = {
     &_sheap,
 #if NUM_HEAPS > 1
@@ -118,7 +119,11 @@ static char *heap_top[NUM_HEAPS] = {
 #error "Unsupported NUM_HEAPS value, edit newlib_syscalls_default/syscalls.c to add more heaps."
 #endif
 };
+#else
+static char *heap_top[NUM_HEAPS];
+#endif /* MODULE_CORTEXM_COMMON_PIP */
 
+#ifndef MODULE_CORTEXM_COMMON_PIP
 static const struct heap heaps[NUM_HEAPS] = {
     {
         .start = &_sheap,
@@ -143,6 +148,18 @@ static const struct heap heaps[NUM_HEAPS] = {
     },
 #endif
 };
+#else
+static struct heap heaps[NUM_HEAPS];
+#endif /* MODULE_CORTEXM_COMMON_PIP */
+
+#ifdef MODULE_CORTEXM_COMMON_PIP
+void heap_init(void *start, void *end)
+{
+    heaps[0].start = start;
+    heaps[0].end = end;
+    heap_top[0] = start;
+}
+#endif /* MODULE_CORTEXM_COMMON_PIP */
 
 /**
  * @brief Initialize NewLib, called by __libc_init_array() from the startup script

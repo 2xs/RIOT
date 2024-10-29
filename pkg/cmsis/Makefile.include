@@ -1,4 +1,8 @@
-INCLUDES += -I$(PKGDIRBASE)/cmsis/CMSIS/Core/Include
+ifeq ($(patsubst %_pip,,$(lastword $(CPU_FAM))),)
+INCLUDES += -I$(PKGDIRBASE)/cmsis/CMSIS/Core/Include/cortexm_common_pip
+else
+INCLUDES += -I$(PKGDIRBASE)/cmsis/CMSIS/Core/Include/cortexm_common
+endif
 
 ifneq (,$(filter cmsis-dsp,$(USEMODULE)))
   INCLUDES += -I$(PKGDIRBASE)/cmsis/CMSIS/DSP/Include
