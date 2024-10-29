@@ -152,16 +152,22 @@ static inline void cortexm_sleep_until_event(void)
 static inline void cortexm_sleep(int deep)
 {
     if (deep) {
-        SCB->SCR |=  (SCB_SCR_SLEEPDEEP_Msk);
+        Pip_out(PIP_ARMV7M_SCS_SCID_SCR,
+            Pip_in(PIP_ARMV7M_SCS_SCID_SCR) | SCB_SCR_SLEEPDEEP_Msk);
     }
     else {
-        SCB->SCR &= ~(SCB_SCR_SLEEPDEEP_Msk);
+        Pip_out(PIP_ARMV7M_SCS_SCID_SCR,
+            Pip_in(PIP_ARMV7M_SCS_SCID_SCR) & ~SCB_SCR_SLEEPDEEP_Msk);
     }
 
     /* ensure that all memory accesses have completed and trigger sleeping */
     unsigned state = irq_disable();
     __DSB();
     __WFI();
+    /* Some CPUs require an ISB after WFI to work around silicon bugs */
+#if CORTEXM_ISB_REQUIRED_AFTER_WFI
+    __ISB();
+#endif
     irq_restore(state);
 }
 

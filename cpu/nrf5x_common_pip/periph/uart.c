@@ -28,29 +28,34 @@
  * @}
  */
 
-#include <assert.h>
 #include <stdint.h>
 #include <string.h>
 
+#include "compiler_hints.h"
 #include "cpu.h"
-#include "periph/uart.h"
 #include "periph/gpio.h"
+#include "periph/uart.h"
+
 #include "svc.h"
 
-#if !defined(CPU_MODEL_NRF52832XXAA) && !defined(CPU_FAM_NRF51)
-#define UART_INVALID    (uart >= UART_NUMOF)
-#define REG_BAUDRATE    dev(uart)->BAUDRATE
-#define REG_CONFIG      dev(uart)->CONFIG
-#define PSEL_RXD        dev(uart)->PSEL.RXD
-#define PSEL_TXD        dev(uart)->PSEL.TXD
-#define UART_IRQN       uart_config[uart].irqn
-#define UART_PIN_RX     uart_config[uart].rx_pin
-#define UART_PIN_TX     uart_config[uart].tx_pin
-#ifdef MODULE_PERIPH_UART_HW_FC
-#define UART_PIN_RTS    uart_config[uart].rts_pin
-#define UART_PIN_CTS    uart_config[uart].cts_pin
+#ifdef UARTE_PRESENT
+#  define PSEL_RXD          PSEL.RXD
+#  define PSEL_TXD          PSEL.TXD
+#  define PSEL_RTS          PSEL.RTS
+#  define PSEL_CTS          PSEL.CTS
+#  define ENABLE_ON         UARTE_ENABLE_ENABLE_Enabled
+#  define ENABLE_OFF        UARTE_ENABLE_ENABLE_Disabled
+#  define UART_TYPE         NRF_UARTE_Type
+#else
+#  define PSEL_RXD          PSELRXD
+#  define PSEL_TXD          PSELTXD
+#  define PSEL_RTS          PSELRTS
+#  define PSEL_CTS          PSELCTS
+#  define ENABLE_ON         UART_ENABLE_ENABLE_Enabled
+#  define ENABLE_OFF        UART_ENABLE_ENABLE_Disabled
+#  define UART_TYPE         NRF_UART_Type
 #endif
-#define ISR_CTX         isr_ctx[uart]
+
 #define RAM_MASK        (0x20000000)
 
 /**
@@ -64,7 +69,9 @@
  * @brief Allocate memory for the interrupt context
  */
 static uart_isr_ctx_t isr_ctx[UART_NUMOF];
+#ifdef UARTE_PRESENT
 static uint8_t rx_buf[UART_NUMOF];
+#endif
 
 #ifdef MODULE_PERIPH_UART_NONBLOCKING
 
@@ -79,152 +86,130 @@ static uint8_t uart_tx_rb_buf[UART_NUMOF][UART_TXBUF_SIZE];
 
 /**
  * @brief Shared IRQ Callback for UART on nRF53/nRF9160
- */
+*/
 void uart_isr_handler(void *arg);
 
-static inline NRF_UARTE_Type *dev(uart_t uart)
-{
-    return uart_config[uart].dev;
-}
-
-#else /* nrf51 and nrf52832 etc */
-
-#define UART_INVALID    (uart != 0)
-#define REG_BAUDRATE    PIP_NRF_UART_UART0_BAUDRATE
-#define REG_CONFIG      PIP_NRF_UART_UART0_CONFIG
-#define PSEL_RXD        PIP_NRF_UART_UART0_PSELRXD
-#define PSEL_TXD        PIP_NRF_UART_UART0_PSELTXD
-#define UART_0_ISR      isr_uart0
-#define ISR_CTX         isr_ctx
-
-/**
- * @brief Allocate memory for the interrupt context
- */
-static uart_isr_ctx_t isr_ctx;
-
-#endif  /* !CPU_MODEL_NRF52832XXAA && !CPU_FAM_NRF51 */
+/* use an enum to count the number of UART ISR macro names defined by the
+ * board */
+enum {
+#ifdef UART_0_ISR
+    UART_0_ISR_NUM,
+#endif
+#ifdef UART_1_ISR
+    UART_1_ISR_NUM,
+#endif
+    UART_ISR_NUMOF,
+};
 
 int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
 {
-    if (UART_INVALID) {
+/* ensure the ISR names have been defined as needed */
+#if !defined(CPU_NRF53) && !defined(CPU_NRF9160)
+    static_assert(UART_NUMOF == UART_ISR_NUMOF, "Define(s) of UART ISR name(s) missing");
+#endif
+    if ((unsigned)uart >= UART_NUMOF) {
         return UART_NODEV;
     }
 
-    /* remember callback addresses and argument */
-    ISR_CTX.rx_cb = rx_cb;
-    ISR_CTX.arg = arg;
+    uint32_t dev = uart_config[uart].dev;
 
-#ifdef CPU_FAM_NRF51
-   /* power on the UART device */
-    NRF_UART0->POWER = 1;
+    /* remember callback addresses and argument */
+    isr_ctx[uart].rx_cb = rx_cb;
+    isr_ctx[uart].arg = arg;
+
+#ifndef UARTE_PRESENT
+    /* only the legacy non-EasyDMA UART needs to be powered on explicitly */
+    dev->POWER = 1;
 #endif
 
     /* reset configuration registers */
-    Pip_out(REG_CONFIG, 0);
+    Pip_out(dev + PIP_NRF_UART_UART0_CONFIG_INDEX, 0);
 
     /* configure RX pin */
     if (rx_cb) {
-        gpio_init(UART_PIN_RX, GPIO_IN);
-        Pip_out(PSEL_RXD, UART_PIN_RX);
+        gpio_init(uart_config[uart].rx_pin, GPIO_IN);
+        Pip_out(dev + PIP_NRF_UART_UART0_PSELRXD_INDEX, uart_config[uart].rx_pin);
     }
 
     /* configure TX pin */
-    gpio_init(UART_PIN_TX, GPIO_OUT);
-    Pip_out(PSEL_TXD, UART_PIN_TX);
+    gpio_init(uart_config[uart].tx_pin, GPIO_OUT);
+    Pip_out(dev + PIP_NRF_UART_UART0_PSELTXD_INDEX, uart_config[uart].tx_pin);
 
-#if !defined(CPU_MODEL_NRF52832XXAA) && !defined(CPU_FAM_NRF51)
     /* enable HW-flow control if defined */
  #ifdef MODULE_PERIPH_UART_HW_FC
-        /* set pin mode for RTS and CTS pins */
-        if (UART_PIN_RTS != GPIO_UNDEF && UART_PIN_CTS != GPIO_UNDEF) {
-            gpio_init(UART_PIN_RTS, GPIO_OUT);
-            gpio_init(UART_PIN_CTS, GPIO_IN);
-            /* configure RTS and CTS pins to use */
-            dev(uart)->PSEL.RTS = UART_PIN_RTS;
-            dev(uart)->PSEL.CTS = UART_PIN_CTS;
-            REG_CONFIG |= UART_CONFIG_HWFC_Msk; /* enable HW flow control */
-        }
-#else
-        dev(uart)->PSEL.RTS = 0xffffffff;   /* pin disconnected */
-        dev(uart)->PSEL.CTS = 0xffffffff;   /* pin disconnected */
-#endif
-#else
-#ifdef MODULE_PERIPH_UART_HW_FC
     /* set pin mode for RTS and CTS pins */
-    if (UART_PIN_RTS != GPIO_UNDEF && UART_PIN_CTS != GPIO_UNDEF) {
-        gpio_init(UART_PIN_RTS, GPIO_OUT);
-        gpio_init(UART_PIN_CTS, GPIO_IN);
+    if (uart_config[uart].rts_pin != GPIO_UNDEF && uart_config[uart].cts_pin != GPIO_UNDEF) {
+        gpio_init(uart_config[uart].rts_pin, GPIO_OUT);
+        gpio_init(uart_config[uart].cts_pin, GPIO_IN);
         /* configure RTS and CTS pins to use */
-        NRF_UART0->PSELRTS = UART_PIN_RTS;
-        NRF_UART0->PSELCTS = UART_PIN_CTS;
-        REG_CONFIG |= UART_CONFIG_HWFC_Msk;     /* enable HW flow control */
+        Pip_out(dev + PIP_NRF_UART_UART0_PSELRTS_INDEX, uart_config[uart].rts_pin);
+        Pip_out(dev + PIP_NRF_UART_UART0_PSELCTS_INDEX, uart_config[uart].cts_pin);
+        Pip_out(dev + PIP_NRF_UART_UART0_CONFIG_INDEX,
+            Pip_in(dev + PIP_NRF_UART_UART0_CONFIG_INDEX) | UART_CONFIG_HWFC_Msk);     /* enable HW flow control */
     }
-#else
-        Pip_out(PIP_NRF_UART_UART0_PSELRTS, 0xffffffff); /* pin disconnected */
-        Pip_out(PIP_NRF_UART_UART0_PSELCTS, 0xffffffff); /* pin disconnected */
-#endif /* MODULE_PERIPH_UART_HW_FC */
+    else
 #endif
+    {
+        Pip_out(dev + PIP_NRF_UART_UART0_PSELRTS_INDEX, 0xffffffff);   /* pin disconnected */
+        Pip_out(dev + PIP_NRF_UART_UART0_PSELCTS_INDEX, 0xffffffff);   /* pin disconnected */
+    }
 
     /* select baudrate */
     switch (baudrate) {
-        case 1200:
-            Pip_out(REG_BAUDRATE, UART_BAUDRATE_BAUDRATE_Baud1200);
-            break;
-        case 2400:
-            Pip_out(REG_BAUDRATE, UART_BAUDRATE_BAUDRATE_Baud2400);
-            break;
-        case 4800:
-            Pip_out(REG_BAUDRATE, UART_BAUDRATE_BAUDRATE_Baud4800);
-            break;
-        case 9600:
-            Pip_out(REG_BAUDRATE, UART_BAUDRATE_BAUDRATE_Baud9600);
-            break;
-        case 14400:
-            Pip_out(REG_BAUDRATE, UART_BAUDRATE_BAUDRATE_Baud14400);
-            break;
-        case 19200:
-            Pip_out(REG_BAUDRATE, UART_BAUDRATE_BAUDRATE_Baud19200);
-            break;
-        case 28800:
-            Pip_out(REG_BAUDRATE, UART_BAUDRATE_BAUDRATE_Baud28800);
-            break;
-        case 38400:
-            Pip_out(REG_BAUDRATE, UART_BAUDRATE_BAUDRATE_Baud38400);
-            break;
-        case 57600:
-            Pip_out(REG_BAUDRATE, UART_BAUDRATE_BAUDRATE_Baud57600);
-            break;
-        case 76800:
-            Pip_out(REG_BAUDRATE, UART_BAUDRATE_BAUDRATE_Baud76800);
-            break;
-        case 115200:
-            Pip_out(REG_BAUDRATE, UART_BAUDRATE_BAUDRATE_Baud115200);
-            break;
-        case 230400:
-            Pip_out(REG_BAUDRATE, UART_BAUDRATE_BAUDRATE_Baud230400);
-            break;
-        case 250000:
-            Pip_out(REG_BAUDRATE, UART_BAUDRATE_BAUDRATE_Baud250000);
-            break;
-        case 460800:
-            Pip_out(REG_BAUDRATE, UART_BAUDRATE_BAUDRATE_Baud460800);
-            break;
-        case 921600:
-            Pip_out(REG_BAUDRATE, UART_BAUDRATE_BAUDRATE_Baud921600);
-            break;
-        case 1000000:
-            Pip_out(REG_BAUDRATE, UART_BAUDRATE_BAUDRATE_Baud1M);
-            break;
-        default:
-            return UART_NOBAUD;
+    case 1200:
+        Pip_out(dev + PIP_NRF_UART_UART0_BAUDRATE_INDEX, UARTE_BAUDRATE_BAUDRATE_Baud1200);
+        break;
+    case 2400:
+        Pip_out(dev + PIP_NRF_UART_UART0_BAUDRATE_INDEX, UARTE_BAUDRATE_BAUDRATE_Baud2400);
+        break;
+    case 4800:
+        Pip_out(dev + PIP_NRF_UART_UART0_BAUDRATE_INDEX, UARTE_BAUDRATE_BAUDRATE_Baud4800);
+        break;
+    case 9600:
+        Pip_out(dev + PIP_NRF_UART_UART0_BAUDRATE_INDEX, UARTE_BAUDRATE_BAUDRATE_Baud9600);
+        break;
+    case 14400:
+        Pip_out(dev + PIP_NRF_UART_UART0_BAUDRATE_INDEX, UARTE_BAUDRATE_BAUDRATE_Baud14400);
+        break;
+    case 19200:
+        Pip_out(dev + PIP_NRF_UART_UART0_BAUDRATE_INDEX, UARTE_BAUDRATE_BAUDRATE_Baud19200);
+        break;
+    case 28800:
+        Pip_out(dev + PIP_NRF_UART_UART0_BAUDRATE_INDEX, UARTE_BAUDRATE_BAUDRATE_Baud28800);
+        break;
+    case 38400:
+        Pip_out(dev + PIP_NRF_UART_UART0_BAUDRATE_INDEX, UARTE_BAUDRATE_BAUDRATE_Baud38400);
+        break;
+    case 57600:
+        Pip_out(dev + PIP_NRF_UART_UART0_BAUDRATE_INDEX, UARTE_BAUDRATE_BAUDRATE_Baud57600);
+        break;
+    case 76800:
+        Pip_out(dev + PIP_NRF_UART_UART0_BAUDRATE_INDEX, UARTE_BAUDRATE_BAUDRATE_Baud76800);
+        break;
+    case 115200:
+        Pip_out(dev + PIP_NRF_UART_UART0_BAUDRATE_INDEX, UARTE_BAUDRATE_BAUDRATE_Baud115200);
+        break;
+    case 230400:
+        Pip_out(dev + PIP_NRF_UART_UART0_BAUDRATE_INDEX, UARTE_BAUDRATE_BAUDRATE_Baud230400);
+        break;
+    case 250000:
+        Pip_out(dev + PIP_NRF_UART_UART0_BAUDRATE_INDEX, UARTE_BAUDRATE_BAUDRATE_Baud250000);
+        break;
+    case 460800:
+        Pip_out(dev + PIP_NRF_UART_UART0_BAUDRATE_INDEX, UARTE_BAUDRATE_BAUDRATE_Baud460800);
+        break;
+    case 921600:
+        Pip_out(dev + PIP_NRF_UART_UART0_BAUDRATE_INDEX, UARTE_BAUDRATE_BAUDRATE_Baud921600);
+        break;
+    case 1000000:
+        Pip_out(dev + PIP_NRF_UART_UART0_BAUDRATE_INDEX, UARTE_BAUDRATE_BAUDRATE_Baud1M);
+        break;
+    default:
+        return UART_NOBAUD;
     }
 
     /* enable the UART device */
-#if !defined(CPU_MODEL_NRF52832XXAA) && !defined(CPU_FAM_NRF51)
-    dev(uart)->ENABLE = UARTE_ENABLE_ENABLE_Enabled;
-#else
-    Pip_out(PIP_NRF_UART_UART0_ENABLE, UART_ENABLE_ENABLE_Enabled);
-#endif
+    Pip_out(dev + PIP_NRF_UART_UART0_ENABLE_INDEX, ENABLE_ON);
 
 #ifdef MODULE_PERIPH_UART_NONBLOCKING
     /* set up the TX buffer */
@@ -232,60 +217,138 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
 #endif
 
     if (rx_cb) {
-#if !defined(CPU_MODEL_NRF52832XXAA) && !defined(CPU_FAM_NRF51)
-        dev(uart)->RXD.MAXCNT = 1;
-        dev(uart)->RXD.PTR = (uint32_t)&rx_buf[uart];
-        dev(uart)->INTENSET = UARTE_INTENSET_ENDRX_Msk;
-        dev(uart)->SHORTS |= UARTE_SHORTS_ENDRX_STARTRX_Msk;
-        dev(uart)->TASKS_STARTRX = 1;
+#ifdef UARTE_PRESENT
+        Pip_out(dev + PIP_NRF_UART_UART0_RXD_MAXCNT_INDEX, 1);
+        Pip_out(dev + PIP_NRF_UART_UART0_RXD_PTR_INDEX, (uint32_t)&rx_buf[uart]);
+        Pip_out(dev + PIP_NRF_UART_UART0_INTENSET_INDEX, UARTE_INTENSET_ENDRX_Msk);
+        Pip_out(dev + PIP_NRF_UART_UART0_SHORTS_INDEX,
+            Pip_in(dev + PIP_NRF_UART_UART0_SHORTS_INDEX) | UARTE_SHORTS_ENDRX_STARTRX_Msk);
+        Pip_out(dev + PIP_NRF_UART_UART0_TASKS_STARTRX_INDEX, 1);
 #else
-        Pip_out(PIP_NRF_UART_UART0_INTENSET, UART_INTENSET_RXDRDY_Msk);
-        Pip_out(PIP_NRF_UART_UART0_TASKS_STARTRX, 1);
+        Pip_out(dev + PIP_NRF_UART_UART0_INTENSET_INDEX, UART_INTENSET_RXDRDY_Msk);
+        Pip_out(dev + PIP_NRF_UART_UART0_TASKS_STARTRX_INDEX, 1);
 #endif
     }
 
     if (rx_cb || IS_USED(MODULE_PERIPH_UART_NONBLOCKING)) {
 #if  defined(CPU_NRF53) || defined(CPU_NRF9160)
-         shared_irq_register_uart(dev(uart), uart_isr_handler, (void *)(uintptr_t)uart);
+         shared_irq_register_uart(dev, uart_isr_handler, (void *)(uintptr_t)uart);
 #else
-         NVIC_EnableIRQ(UART_IRQN);
+         NVIC_EnableIRQ(uart_config[uart].irqn);
 #endif
     }
     return UART_OK;
 }
 
-/* nrf52840 || nrf52811 (using EasyDMA) */
-#if !defined(CPU_MODEL_NRF52832XXAA) && !defined(CPU_FAM_NRF51)
+void uart_poweron(uart_t uart)
+{
+    assume((unsigned)uart < UART_NUMOF);
+
+    if (isr_ctx[uart].rx_cb) {
+        Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_TASKS_STARTRX_INDEX, 1);
+    }
+}
+
+void uart_poweroff(uart_t uart)
+{
+    assume((unsigned)uart < UART_NUMOF);
+
+    Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_TASKS_STOPRX_INDEX, 1);
+}
+
+/* Unify macro names across nRF51 (UART) and nRF52 and newer (UARTE) */
+#if defined(UARTE_CONFIG_HWFC_Msk)
+#  define CONFIG_HWFC_Msk UARTE_CONFIG_HWFC_Msk
+#elif defined(UART_CONFIG_HWFC_Msk)
+#  define CONFIG_HWFC_Msk UART_CONFIG_HWFC_Msk
+#endif
+
+#if defined(UARTE_CONFIG_PARITY_Msk)
+#  define CONFIG_PARITY_Msk UARTE_CONFIG_PARITY_Msk
+#elif defined(UART_CONFIG_PARITY_Msk)
+#  define CONFIG_PARITY_Msk UART_CONFIG_PARITY_Msk
+#endif
+
+#if defined(UARTE_CONFIG_STOP_Msk)
+#  define CONFIG_STOP_Msk UARTE_CONFIG_STOP_Msk
+#elif defined(UART_CONFIG_STOP_Msk)
+#  define CONFIG_STOP_Msk UART_CONFIG_STOP_Msk
+#endif
+
+int uart_mode(uart_t uart, uart_data_bits_t data_bits, uart_parity_t parity,
+              uart_stop_bits_t stop_bits)
+{
+    assume((unsigned)uart < UART_NUMOF);
+    /* Not all nRF5x MCUs support 2 stop bits, but the vendor header files
+     * reflect the feature set. */
+    switch (stop_bits) {
+    case UART_STOP_BITS_1:
+#ifdef CONFIG_STOP_Msk
+    case UART_STOP_BITS_2:
+#endif
+        break;
+    default:
+        return UART_NOMODE;
+    }
+
+    if (data_bits != UART_DATA_BITS_8) {
+        return UART_NOMODE;
+    }
+
+    if ((parity != UART_PARITY_NONE) && (parity != UART_PARITY_EVEN)) {
+        return UART_NOMODE;
+    }
+
+    /* Do not modify hardware flow control */
+    uint32_t conf = Pip_in(uart_config[uart].dev + PIP_NRF_UART_UART0_CONFIG_INDEX) & CONFIG_HWFC_Msk;
+
+#ifdef CONFIG_STOP_Msk
+    if (stop_bits == UART_STOP_BITS_2) {
+        conf |= UARTE_CONFIG_STOP_Msk;
+    }
+#endif
+
+    if (parity == UART_PARITY_EVEN) {
+        conf |= CONFIG_PARITY_Msk;
+    }
+
+    Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_CONFIG_INDEX, conf);
+    return UART_OK;
+}
+
+/* UART with EasyDMA */
+#ifdef UARTE_PRESENT
 static void _write_buf(uart_t uart, const uint8_t *data, size_t len)
 {
-    dev(uart)->EVENTS_ENDTX = 0;
+    Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_EVENTS_ENDTX_INDEX , 0);
     if (IS_USED(MODULE_PERIPH_UART_NONBLOCKING)) {
-        dev(uart)->INTENSET = UARTE_INTENSET_ENDTX_Msk;
+        Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_INTENSET_INDEX,
+                UARTE_INTENSET_ENDTX_Msk);
     }
     /* set data to transfer to DMA TX pointer */
-    dev(uart)->TXD.PTR = (uint32_t)data;
-    dev(uart)->TXD.MAXCNT = len;
+    Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_TXD_PTR_INDEX, (uint32_t)data);
+    Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_TXD_MAXCNT_INDEX, len);
     /* start transmission */
-    dev(uart)->TASKS_STARTTX = 1;
+    Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_TASKS_STARTTX_INDEX, 1);
     /* wait for the end of transmission */
     if (!IS_USED(MODULE_PERIPH_UART_NONBLOCKING)) {
-        while (dev(uart)->EVENTS_ENDTX == 0) {}
-        dev(uart)->TASKS_STOPTX = 1;
+        while (Pip_in(uart_config[uart].dev + PIP_NRF_UART_UART0_EVENTS_ENDTX_INDEX) == 0) {}
+        Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_TASKS_STOPTX_INDEX, 1);
     }
 }
 
 void uart_write(uart_t uart, const uint8_t *data, size_t len)
 {
-    assert(uart < UART_NUMOF);
+    assume((unsigned)uart < UART_NUMOF);
 #ifdef MODULE_PERIPH_UART_NONBLOCKING
     for (size_t i = 0; i < len; i++) {
         /* in IRQ or interrupts disabled */
         if (irq_is_in() || __get_PRIMASK()) {
             if (tsrb_full(&uart_tx_rb[uart])) {
                 /* wait for end of ongoing transmission */
-                if (dev(uart)->EVENTS_TXSTARTED) {
-                    while (dev(uart)->EVENTS_ENDTX == 0) {}
-                    dev(uart)->EVENTS_TXSTARTED = 0;
+                if (Pip_in(uart_config[uart].dev + PIP_NRF_UART_UART0_EVENTS_TXSTARTED_INDEX) {
+                    while (Pip_in(uart_config[uart].dev + PIP_NRF_UART_UART0_EVENTS_ENDTX_INDEX) == 0) {}
+                    Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_EVENTS_TXSTARTED_INDEX, 0);
                 }
                 /* free one spot in buffer */
                 tx_buf[uart] = tsrb_get_one(&uart_tx_rb[uart]);
@@ -296,7 +359,7 @@ void uart_write(uart_t uart, const uint8_t *data, size_t len)
         else {
             /* if no transmission is ongoing and ring buffer is full
                free up a spot in the buffer by sending one byte */
-            if (!dev(uart)->EVENTS_TXSTARTED && tsrb_full(&uart_tx_rb[uart])) {
+            if (!Pip_in((uart_config[uart].dev + PIP_NRF_UART_UART0_EVENTS_TXSTARTED_INDEX) && tsrb_full(&uart_tx_rb[uart])) {
                 tx_buf[uart] = tsrb_get_one(&uart_tx_rb[uart]);
                 _write_buf(uart, &tx_buf[uart], 1);
             }
@@ -305,7 +368,7 @@ void uart_write(uart_t uart, const uint8_t *data, size_t len)
     }
     /* if no transmission is ongoing bootstrap the transmission process
        by setting a single byte to be written */
-    if (!dev(uart)->EVENTS_TXSTARTED) {
+    if (!Pip_in((uart_config[uart].dev + PIP_NRF_UART_UART0_EVENTS_TXSTARTED_INDEX)) {
         if (!tsrb_empty(&uart_tx_rb[uart])) {
             tx_buf[uart] = tsrb_get_one(&uart_tx_rb[uart]);
             _write_buf(uart, &tx_buf[uart], 1);
@@ -333,75 +396,26 @@ void uart_write(uart_t uart, const uint8_t *data, size_t len)
 #endif
 }
 
-void uart_poweron(uart_t uart)
+static void irq_handler(uart_t uart)
 {
-    assert(uart < UART_NUMOF);
-
-    if (isr_ctx[uart].rx_cb) {
-        dev(uart)->TASKS_STARTRX = 1;
-    }
-}
-
-void uart_poweroff(uart_t uart)
-{
-    assert(uart < UART_NUMOF);
-
-    dev(uart)->TASKS_STOPRX = 1;
-}
-
-int uart_mode(uart_t uart, uart_data_bits_t data_bits, uart_parity_t parity,
-              uart_stop_bits_t stop_bits)
-{
-
-    if (stop_bits != UART_STOP_BITS_1 && stop_bits != UART_STOP_BITS_2) {
-        return UART_NOMODE;
-    }
-
-    if (data_bits != UART_DATA_BITS_8) {
-        return UART_NOMODE;
-    }
-
-    if (parity != UART_PARITY_NONE && parity != UART_PARITY_EVEN) {
-        return UART_NOMODE;
-    }
-
-    if (stop_bits == UART_STOP_BITS_2) {
-        dev(uart)->CONFIG |= UARTE_CONFIG_STOP_Msk;
-    }
-    else {
-        dev(uart)->CONFIG &= ~UARTE_CONFIG_STOP_Msk;
-    }
-
-    if (parity == UART_PARITY_EVEN) {
-        dev(uart)->CONFIG |= UARTE_CONFIG_PARITY_Msk;
-    }
-    else {
-        dev(uart)->CONFIG &= ~UARTE_CONFIG_PARITY_Msk;
-    }
-
-    return UART_OK;
-}
-
-static inline void irq_handler(uart_t uart)
-{
-    if (dev(uart)->EVENTS_ENDRX) {
-        dev(uart)->EVENTS_ENDRX = 0;
+    if (Pip_in(uart_config[uart].dev + PIP_NRF_UART_UART0_EVENTS_ENDRX_INDEX)) {
+        Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_EVENTS_ENDRX_INDEX, 0);
 
         /* make sure we actually received new data */
-        if (dev(uart)->RXD.AMOUNT != 0) {
+        if (Pip_in(uart_config[uart].dev + PIP_NRF_UART_UART0_RXD_AMOUNT_INDEX) != 0) {
             /* Process received byte */
             isr_ctx[uart].rx_cb(isr_ctx[uart].arg, rx_buf[uart]);
         }
     }
 
 #ifdef MODULE_PERIPH_UART_NONBLOCKING
-    if (dev(uart)->EVENTS_ENDTX) {
+    if (Pip_in(uart_config[uart].dev + PIP_NRF_UART_UART0_EVENTS_ENDTX_INDEX)) {
         /* reset flags and idsable ISR on EVENTS_ENDTX */
-        dev(uart)->EVENTS_ENDTX = 0;
-        dev(uart)->EVENTS_TXSTARTED = 0;
-        dev(uart)->INTENCLR = UARTE_INTENSET_ENDTX_Msk;
+        Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_EVENTS_ENDTX_INDEX, 0);
+        Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_EVENTS_TXSTARTED_INDEX, 0);
+        Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_INTENCLR_INDEX, UARTE_INTENSET_ENDTX_Msk);
         if (tsrb_empty(&uart_tx_rb[uart])) {
-            dev(uart)->TASKS_STOPTX = 1;
+            Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_TASKS_STOPTX_INDEX, 1);
         } else {
             tx_buf[uart] = tsrb_get_one(&uart_tx_rb[uart]);
             _write_buf(uart, &tx_buf[uart], 1);
@@ -412,13 +426,13 @@ static inline void irq_handler(uart_t uart)
     cortexm_isr_end();
 }
 
-#else /* nrf51 and nrf52832 etc */
+#else /* UART without EasyDMA*/
 
 void uart_write(uart_t uart, const uint8_t *data, size_t len)
 {
-    (void)uart;
+    assume((unsigned)uart < UART_NUMOF);
 
-    Pip_out(PIP_NRF_UART_UART0_TASKS_STARTTX, 1);
+    Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_TASKS_STARTTX_INDEX, 1);
 
     for (size_t i = 0; i < len; i++) {
         /* This section of the function is not thread safe:
@@ -431,75 +445,28 @@ void uart_write(uart_t uart, const uint8_t *data, size_t len)
            while loop.
         */
         /* reset ready flag */
-        Pip_out(PIP_NRF_UART_UART0_EVENTS_TXDRDY, 0);
+        Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_EVENTS_TXDRDY_INDEX, 0);
         /* write data into transmit register */
-        Pip_out(PIP_NRF_UART_UART0_TXD, data[i]);
+        Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_TXD_INDEX, data[i]);
         /* wait for any transmission to be done */
-        while (Pip_in(PIP_NRF_UART_UART0_EVENTS_TXDRDY) == 0) {}
+        while (Pip_in(uart_config[uart].dev + PIP_NRF_UART_UART0_EVENTS_TXDRDY_INDEX) == 0) {}
     }
 
-    Pip_out(PIP_NRF_UART_UART0_TASKS_STOPTX, 1);
+    Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_TASKS_STOPTX_INDEX, 1);
 }
 
-void uart_poweron(uart_t uart)
+static void irq_handler(uart_t uart)
 {
-    (void)uart;
-
-    if (isr_ctx.rx_cb) {
-        Pip_out(PIP_NRF_UART_UART0_TASKS_STARTRX, 1);
-    }
-}
-
-void uart_poweroff(uart_t uart)
-{
-    (void)uart;
-
-    Pip_out(PIP_NRF_UART_UART0_TASKS_STOPRX, 1);
-}
-
-int uart_mode(uart_t uart, uart_data_bits_t data_bits, uart_parity_t parity,
-              uart_stop_bits_t stop_bits)
-{
-    (void)uart;
-
-    if (stop_bits != UART_STOP_BITS_1) {
-        return UART_NOMODE;
-    }
-
-    if (data_bits != UART_DATA_BITS_8) {
-        return UART_NOMODE;
-    }
-
-    if (parity != UART_PARITY_NONE && parity != UART_PARITY_EVEN) {
-        return UART_NOMODE;
-    }
-
-    if (parity == UART_PARITY_EVEN) {
-        Pip_out(PIP_NRF_UART_UART0_CONFIG,
-            Pip_in(PIP_NRF_UART_UART0_CONFIG) | UART_CONFIG_PARITY_Msk);
-    }
-    else {
-        Pip_out(PIP_NRF_UART_UART0_CONFIG,
-            Pip_in(PIP_NRF_UART_UART0_CONFIG) & ~UART_CONFIG_PARITY_Msk);
-    }
-
-    return UART_OK;
-}
-
-static inline void irq_handler(uart_t uart)
-{
-    (void)uart;
-
-    if (Pip_in(PIP_NRF_UART_UART0_EVENTS_RXDRDY) == 1) {
-        Pip_out(PIP_NRF_UART_UART0_EVENTS_RXDRDY, 0);
-        uint8_t byte = (uint8_t)(Pip_in(PIP_NRF_UART_UART0_RXD) & 0xff);
-        isr_ctx.rx_cb(isr_ctx.arg, byte);
+    if (Pip_in(uart_config[uart].dev + PIP_NRF_UART_UART0_EVENTS_RXDRDY_INDEX) == 1) {
+        Pip_out(uart_config[uart].dev + PIP_NRF_UART_UART0_EVENTS_RXDRDY_INDEX, 0);
+        uint8_t byte = (uint8_t)(Pip_in(uart_config[uart].dev + PIP_NRF_UART_UART0_RXD_INDEX) & 0xff);
+        isr_ctx[uart].rx_cb(isr_ctx[uart].arg, byte);
     }
 
     cortexm_isr_end();
 }
 
-#endif  /* !CPU_MODEL_NRF52832XXAA && !CPU_FAM_NRF51 */
+#endif
 
 #if defined(CPU_NRF53) || defined(CPU_NRF9160)
 void uart_isr_handler(void *arg)
@@ -522,4 +489,5 @@ void UART_1_ISR(void)
     irq_handler(UART_DEV(1));
 }
 #endif
+
 #endif /* def CPU_NRF53 || CPU_NRF9160 */

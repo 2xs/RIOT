@@ -25,6 +25,7 @@
 
 #include "irq.h"
 #include "periph/timer.h"
+
 #include "svc.h"
 
 #define F_TIMER             (16000000U)     /* the timer is clocked at 16MHz */
@@ -44,6 +45,30 @@ static tim_ctx_t ctx[TIMER_NUMOF];
 static inline uint32_t dev(tim_t tim)
 {
     return timer_config[tim].dev;
+}
+
+uword_t timer_query_freqs_numof(tim_t dev)
+{
+    assert(dev < TIMER_NUMOF);
+    (void)dev;
+    return 10;
+}
+
+uword_t timer_query_channel_numof(tim_t dev)
+{
+    assert(dev < TIMER_NUMOF);
+    return timer_config[dev].channels;
+}
+
+uint32_t timer_query_freqs(tim_t dev, uword_t index)
+{
+    assert(dev < TIMER_NUMOF);
+    (void)dev;
+    if (index >= 10) {
+        return 0;
+    }
+
+    return F_TIMER >> index;
 }
 
 int timer_init(tim_t tim, uint32_t freq, timer_cb_t cb, void *arg)
@@ -76,18 +101,21 @@ int timer_init(tim_t tim, uint32_t freq, timer_cb_t cb, void *arg)
             Pip_out(dev(tim) + PIP_NRF_TIMER_TIMER1_PRESCALER_INDEX, i);
             break;
         }
-        cando /= 2;
+        cando >>= 1;
     }
     if (i == 10) {
         return -1;
     }
 
+    /* reset compare state */
     for(unsigned i = 0; i < timer_config[tim].channels; i++) {
         Pip_out(dev(tim) + PIP_NRF_TIMER_TIMER1_EVENTS_COMPARE_0_INDEX + i, 0);
     }
 
     /* enable interrupts */
-    NVIC_EnableIRQ(timer_config[tim].irqn);
+    if (cb != NULL) {
+        NVIC_EnableIRQ(timer_config[tim].irqn);
+    }
     /* start the timer */
     Pip_out(dev(tim) + PIP_NRF_TIMER_TIMER1_TASKS_START_INDEX, 1);
 
@@ -224,7 +252,7 @@ int timer_clear(tim_t tim, int chan)
 unsigned int timer_read(tim_t tim)
 {
     Pip_out(dev(tim) + PIP_NRF_TIMER_TIMER1_TASKS_CAPTURE_0_INDEX + timer_config[tim].channels, 1);
-    return (int)Pip_in(dev(tim) + PIP_NRF_TIMER_TIMER1_CC_0_INDEX + timer_config[tim].channels);
+    return Pip_in(dev(tim) + PIP_NRF_TIMER_TIMER1_CC_0_INDEX + timer_config[tim].channels);
 }
 
 void timer_start(tim_t tim)
