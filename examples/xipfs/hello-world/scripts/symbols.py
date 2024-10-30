@@ -25,7 +25,7 @@ def usage():
 
 def die(message):
     """Print error message and exit"""
-    print(f'{sys.argv[0]}: {message}', file=sys.stderr)
+    print(f'\033[91;1m{sys.argv[0]}: {message}\033[0m', file=sys.stderr)
     sys.exit(1)
 
 
