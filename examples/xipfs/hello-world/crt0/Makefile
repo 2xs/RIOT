@@ -18,9 +18,12 @@ CFLAGS         += -ffreestanding
 # Do not reorder top-level functions; output them in the same
 # order they appear in the input file
 CFLAGS         += -fno-toplevel-reorder
-CFLAGS         += -Os
-CFLAGS         += -g3
+ifdef DEBUG
+CFLAGS         += -Og
 CFLAGS         += -ggdb
+else
+CFLAGS         += -Os
+endif
 
 LDFLAGS         = -Tlink.ld
 

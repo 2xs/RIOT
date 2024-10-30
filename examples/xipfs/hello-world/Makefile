@@ -21,9 +21,12 @@ CFLAGS         += -mpic-register=sl
 CFLAGS         += -mno-pic-data-is-text-relative
 CFLAGS         += -fPIC
 CFLAGS         += -ffreestanding
-CFLAGS         += -Os
-CFLAGS         += -g3
+ifdef DEBUG
+CFLAGS         += -Og
 CFLAGS         += -ggdb
+else
+CFLAGS         += -Os
+endif
 CFLAGS         += -Wno-unused-parameter
 CFLAGS         += -Istdriot
 
