@@ -46,8 +46,6 @@ endif
 OBJCOPYFLAGS    = --input-target=elf32-littlearm
 OBJCOPYFLAGS   += --output-target=binary
 
-RELSECTIONS     = .rel.rom.ram
-
 TARGET          = hello-world
 
 all: $(TARGET).bin gdbinit
@@ -66,7 +64,7 @@ symbols.bin: $(TARGET).elf scripts/symbols.py
 	exec scripts/symbols.py $< $@
 
 relocation.bin: $(TARGET).elf scripts/relocation.py
-	exec scripts/relocation.py $< $@ $(RELSECTIONS)
+	exec scripts/relocation.py $< $@
 
 partition.bin: $(TARGET).elf
 	$(OBJCOPY) $(OBJCOPYFLAGS) $< $@

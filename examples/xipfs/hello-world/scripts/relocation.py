@@ -20,7 +20,7 @@ from elftools.elf.enums import ENUM_RELOC_TYPE_ARM as r_types
 
 def usage():
     """Print how to to use the script and exit"""
-    print(f'usage: {sys.argv[0]} ELF OUTPUT SECTION...')
+    print(f'usage: {sys.argv[0]} <ELF> <OUTPUT>')
     sys.exit(1)
 
 
@@ -66,9 +66,11 @@ def process_file(elf, names):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) >= 4:
+    if len(sys.argv) >= 3:
         with open(sys.argv[1], 'rb') as f:
-            xs = process_file(ELFFile(f), sys.argv[3:])
+            xs = process_file(ELFFile(f), [
+                '.rel.rom.ram',
+            ])
         with open(sys.argv[2], 'wb') as f:
             f.write(xs)
         sys.exit(0)
