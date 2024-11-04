@@ -19,7 +19,7 @@ from elftools.elf.sections import SymbolTableSection
 
 def usage():
     """Print how to to use the script and exit"""
-    print(f'usage: {sys.argv[0]} ELF OUTPUT SYMBOL...')
+    print(f'usage: {sys.argv[0]} <ELF> <OUTPUT>')
     sys.exit(1)
 
 
@@ -55,9 +55,18 @@ def process_file(elf, symnames):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) >= 4:
+    if len(sys.argv) >= 3:
         with open(sys.argv[1], 'rb') as f:
-            xs = process_file(ELFFile(f), sys.argv[3:])
+            xs = process_file(ELFFile(f), [
+                # The order of the symbols matter, as it reflects the
+                # writing order in the symbols.bin file
+                'start',
+                '__rom_size',
+                '__rom_ram_size',
+                '__ram_size',
+                '__got_size',
+                '__rom_ram_end',
+            ])
         with open(sys.argv[2], 'wb') as f:
             f.write(xs)
         sys.exit(0)

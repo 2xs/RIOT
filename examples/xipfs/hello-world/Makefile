@@ -46,15 +46,6 @@ endif
 OBJCOPYFLAGS    = --input-target=elf32-littlearm
 OBJCOPYFLAGS   += --output-target=binary
 
-# The order of the symbols matter, as it reflects the writing
-# order in the symbols.bin file
-SYMNAMES        = start
-SYMNAMES       += __rom_size
-SYMNAMES       += __rom_ram_size
-SYMNAMES       += __ram_size
-SYMNAMES       += __got_size
-SYMNAMES       += __rom_ram_end
-
 RELSECTIONS     = .rel.rom.ram
 
 TARGET          = hello-world
@@ -72,7 +63,7 @@ crt0.bin: crt0/crt0.c crt0/link.ld crt0/Makefile
 	cp crt0/$@ $@
 
 symbols.bin: $(TARGET).elf scripts/symbols.py
-	exec scripts/symbols.py $< $@ $(SYMNAMES)
+	exec scripts/symbols.py $< $@
 
 relocation.bin: $(TARGET).elf scripts/relocation.py
 	exec scripts/relocation.py $< $@ $(RELSECTIONS)
