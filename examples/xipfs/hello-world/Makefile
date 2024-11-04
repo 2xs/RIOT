@@ -93,9 +93,8 @@ main.o: main.c
 padding.bin: $(TARGET)-raw.bin scripts/padding.py
 	exec scripts/padding.py $< $@
 
-gdbinit: scripts/gdbinit.py ../bin/dwm1001/xipfs.elf crt0/crt0.elf $(TARGET).bin crt0.bin symbols.bin relocation.bin
+gdbinit: scripts/gdbinit.py crt0/crt0.elf $(TARGET).bin crt0.bin symbols.bin relocation.bin
 	exec scripts/gdbinit.py\
-            $(shell realpath ../bin/dwm1001/xipfs.elf)\
             $(shell realpath crt0/crt0.elf)\
             $(shell realpath $(TARGET).elf)\
             $$(($$(wc -c < crt0.bin)+$$(wc -c < symbols.bin)+$$(wc -c < relocation.bin))) > $@

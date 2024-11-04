@@ -17,17 +17,9 @@ from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
 
 
-# This offset represents the difference between the starting
-# address of the global variable exec_ctx found in the file
-# sys/fs/xipfs/file.c and the member ram_start. It must be
-# updated whenever a member of the structure is added, removed,
-# or moved
-OFFSET = 1312
-
-
 def usage():
     """Print how to to use the script and exit"""
-    print(f'usage: {sys.argv[0]} <RIOT_PATH> <CRT0_PATH> <SOFTWARE_PATH> <METADATA_SIZE>...')
+    print(f'usage: {sys.argv[0]} <CRT0_PATH> <SOFTWARE_PATH> <METADATA_SIZE>')
     sys.exit(1)
 
 
@@ -58,27 +50,40 @@ def process_file(elf, symnames):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) >= 5:
-        riot_path = sys.argv[1]
-        crt0_path = sys.argv[2]
-        soft_path = sys.argv[3]
-        crt0_meta_size = int(sys.argv[4])
-        with open(riot_path, 'rb') as f:
-            xs = process_file(ELFFile(f), ['exec_ctx'])
+    if len(sys.argv) >= 4:
+        crt0_path = sys.argv[1]
+        soft_path = sys.argv[2]
+        crt0_meta_size = int(sys.argv[3])
         with open(soft_path, 'rb') as f:
-            ys = process_file(ELFFile(f), ['__got_size', '__rom_ram_size'])
-        rel_got_addr = xs[0] + OFFSET
-        rel_rom_ram_addr = rel_got_addr + ys[0]
-        rel_ram_addr = rel_rom_ram_addr + ys[1]
-        print('set $bin_addr = # Set binary address in NVM here #')
-        print(f'set $rom_addr = $bin_addr + {crt0_meta_size}')
-        print(f'symbol-file {riot_path}')
+            xs = process_file(ELFFile(f), [
+                '__rom_size',
+                '__got_size',
+                '__rom_ram_size',
+                '__ram_size',
+            ])
+        text_size = xs[0]
+        got_size = xs[1]
+        data_size = xs[2]
+        bss_size = xs[3]
+        print(f'set $flash_base = # Define the flash base address here')
+        print(f'set $ram_base = # Define the RAM base address here')
+        print(f'set $crt0_text = $flash_base')
+        print(f'set $text = $crt0_text + {crt0_meta_size}')
+        print(f'set $got = $text + {text_size}')
+        print(f'set $data = $got + {got_size}')
+        print(f'set $rel_got = $ram_base')
+        print(f'set $rel_data = $rel_got + {got_size}')
+        print(f'set $bss = $rel_data + {data_size}')
         print(f'add-symbol-file {crt0_path} '
-              f'-s .text $bin_addr')
+               '-s .text $crt0_text')
         print(f'add-symbol-file {soft_path} '
-              f'-s .rom $rom_addr '
-              f'-s .got {rel_got_addr} '
-              f'-s .rom.ram {rel_rom_ram_addr} '
-              f'-s .ram {rel_ram_addr}')
+               '-s .rom $text '
+               '-s .got $rel_got '
+               '-s .rom.ram $rel_data '
+               '-s .ram $bss')
+        print('set $flash_end = $flash_base + '
+              f'{crt0_meta_size + text_size + got_size + data_size}')
+        print('set $ram_end = $ram_base + '
+              f'{got_size + data_size + bss_size}')
         sys.exit(0)
     usage()
