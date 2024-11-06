@@ -1916,6 +1916,7 @@ static int xipfs_stat0(vfs_mount_t *vfs_mp,
 {
     xipfs_mount_t *xipfs_mp;
     xipfs_path_t xipath;
+    mode_t st_mode;
     size_t len;
     off_t size;
     int ret;
@@ -1943,8 +1944,11 @@ static int xipfs_stat0(vfs_mount_t *vfs_mp,
     }
     switch (xipath.info) {
     case XIPFS_PATH_EXISTS_AS_FILE:
+        st_mode = S_IFREG;
+        break;
     case XIPFS_PATH_EXISTS_AS_EMPTY_DIR:
     case XIPFS_PATH_EXISTS_AS_NONEMPTY_DIR:
+        st_mode = S_IFDIR;
         break;
     case XIPFS_PATH_INVALID_BECAUSE_NOT_DIRS:
         return -ENOTDIR;
@@ -1967,11 +1971,7 @@ static int xipfs_stat0(vfs_mount_t *vfs_mp,
     (void)memset(buf, 0, sizeof(*buf));
     buf->st_dev = (dev_t)(uintptr_t)vfs_mp;
     buf->st_ino = (ino_t)(uintptr_t)xipath.witness;
-    if (path[len-1] != '/') {
-        buf->st_mode = S_IFREG;
-    } else {
-        buf->st_mode = S_IFDIR;
-    }
+    buf->st_mode = st_mode;
     buf->st_nlink = 1;
     buf->st_size = size;
     buf->st_blksize = FLASHPAGE_SIZE;
