@@ -88,7 +88,41 @@ int main(void)
     status = example_ecdsa_p256();
     printf("ECDSA took %d us\n", (int)(ztimer_now(ZTIMER_USEC) - start));
     if (status != PSA_SUCCESS) {
+<<<<<<< HEAD
         failed = true;
+=======
+        printf("ECDSA failed: %s\n", psa_status_to_humanly_readable(status));
+    }
+
+#ifndef SECURE_ELEMENT
+    start = ztimer_now(ZTIMER_USEC);
+    status = example_eddsa();
+    printf("EdDSA took %d us\n", (int)(ztimer_now(ZTIMER_USEC) - start));
+    if (status != PSA_SUCCESS) {
+        printf("EdDSA failed: %s\n", psa_status_to_humanly_readable(status));
+    }
+#endif
+
+#ifdef MULTIPLE_SE
+    puts("Running Examples with secondary SE:");
+    status = example_hmac_sha256_sec_se();
+    printf("HMAC SHA256 took %d us\n", (int)(ztimer_now(ZTIMER_USEC) - start));
+    if (status != PSA_SUCCESS) {
+        printf("HMAC SHA256 failed: %s\n", psa_status_to_humanly_readable(status));
+    }
+
+    start = ztimer_now(ZTIMER_USEC);
+    status = example_cipher_aes_128_sec_se();
+    printf("Cipher AES 128 took %d us\n", (int)(ztimer_now(ZTIMER_USEC) - start));
+    if (status != PSA_SUCCESS) {
+        printf("Cipher AES 128 failed: %s\n", psa_status_to_humanly_readable(status));
+    }
+
+    start = ztimer_now(ZTIMER_USEC);
+    status = example_ecdsa_p256_sec_se();
+    printf("ECDSA took %d us\n", (int)(ztimer_now(ZTIMER_USEC) - start));
+    if (status != PSA_SUCCESS) {
+>>>>>>> 2023.10-pip-port
         printf("ECDSA failed: %s\n", psa_status_to_humanly_readable(status));
     }
 #endif

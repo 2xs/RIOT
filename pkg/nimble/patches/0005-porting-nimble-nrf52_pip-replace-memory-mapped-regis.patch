@@ -1,0 +1,355 @@
+From d8884539a8bb093dfada4350cf343160e8425028 Mon Sep 17 00:00:00 2001
+From: Damien Amara <damien.amara@univ-lille.fr>
+Date: Wed, 8 Mar 2023 17:06:25 +0100
+Subject: [PATCH 5/7] porting/nimble/nrf52_pip: replace memory-mapped register
+ accesses
+
+Replace memory-mapped register accesses of the NimBLE timer by Pip
+register accesses.
+---
+ porting/nimble/nrf52_pip/src/hal_timer.c | 122 +++++++++++------------
+ 1 file changed, 60 insertions(+), 62 deletions(-)
+
+diff --git a/porting/nimble/nrf52_pip/src/hal_timer.c b/porting/nimble/nrf52_pip/src/hal_timer.c
+index aa78bf9a..96d69e5a 100644
+--- a/porting/nimble/nrf52_pip/src/hal_timer.c
++++ b/porting/nimble/nrf52_pip/src/hal_timer.c
+@@ -50,7 +50,7 @@ struct nrf52_hal_timer {
+     uint32_t tmr_cntr;
+     uint32_t timer_isrs;
+     uint32_t tmr_freq;
+-    void *tmr_reg;
++    uint32_t tmr_reg;
+     TAILQ_HEAD(hal_timer_qhead, hal_timer) hal_timer_q;
+ };
+ 
+@@ -149,16 +149,16 @@ nrf_timer_set_ocmp(struct nrf52_hal_timer *bsptimer, uint32_t expiry)
+     uint32_t temp;
+     uint32_t cntr;
+     NRF_TIMER_Type *hwtimer;
+-    NRF_RTC_Type *rtctimer;
++    uint32_t rtctimer;
+ 
+     if (bsptimer->tmr_rtc) {
+-        rtctimer = (NRF_RTC_Type *)bsptimer->tmr_reg;
+-        rtctimer->INTENCLR = NRF_TIMER_INT_MASK(NRF_RTC_TIMER_CC_INT);
++        rtctimer = bsptimer->tmr_reg;
++        Pip_out(rtctimer + PIP_NRF_RTC_RTC0_INTENCLR_INDEX, NRF_TIMER_INT_MASK(NRF_RTC_TIMER_CC_INT));
+         temp = bsptimer->tmr_cntr;
+-        cntr = rtctimer->COUNTER;
+-        if (rtctimer->EVENTS_OVRFLW) {
++        cntr = Pip_in(rtctimer + PIP_NRF_RTC_RTC0_COUNTER_INDEX);
++        if (Pip_in(rtctimer + PIP_NRF_RTC_RTC0_EVENTS_OVRFLW_INDEX)) {
+             temp += (1UL << 24);
+-            cntr = rtctimer->COUNTER;
++            cntr = Pip_in(rtctimer + PIP_NRF_RTC_RTC0_COUNTER_INDEX);
+         }
+         temp |= cntr;
+         delta_t = (int32_t)(expiry - temp);
+@@ -174,26 +174,26 @@ nrf_timer_set_ocmp(struct nrf52_hal_timer *bsptimer, uint32_t expiry)
+          * immediately. Delta 0 or less means we should always fire immediately.
+          */
+         if (delta_t < 1) {
+-            rtctimer->INTENCLR = RTC_INTENCLR_TICK_Msk;
++        	Pip_out(rtctimer + PIP_NRF_RTC_RTC0_INTENCLR_INDEX, RTC_INTENCLR_TICK_Msk);
+             NVIC_SetPendingIRQ(bsptimer->tmr_irq_num);
+         } else if (delta_t < 3) {
+-            rtctimer->INTENSET = RTC_INTENSET_TICK_Msk;
+-            if (rtctimer->COUNTER != cntr) {
++        	Pip_out(rtctimer + rtctimer + PIP_NRF_RTC_RTC0_INTENSET_INDEX, RTC_INTENSET_TICK_Msk);
++            if (Pip_in(rtctimer + PIP_NRF_RTC_RTC0_COUNTER_INDEX) != cntr) {
+                 NVIC_SetPendingIRQ(bsptimer->tmr_irq_num);
+             }
+         } else {
+-            rtctimer->INTENCLR = RTC_INTENCLR_TICK_Msk;
++            Pip_out(PIP_NRF_RTC_RTC0_INTENCLR, RTC_INTENCLR_TICK_Msk);
+ 
+             if (delta_t < (1UL << 24)) {
+-                rtctimer->CC[NRF_RTC_TIMER_CC_INT] = expiry & 0x00ffffff;
++            	Pip_out(rtctimer + PIP_NRF_RTC_RTC0_CC_0_INDEX + NRF_RTC_TIMER_CC_INT, expiry & 0x00ffffff);
+             } else {
+                 /* CC too far ahead. Just make sure we set compare far ahead */
+-                rtctimer->CC[NRF_RTC_TIMER_CC_INT] = cntr + (1UL << 23);
++            	Pip_out(rtctimer + PIP_NRF_RTC_RTC0_CC_0_INDEX + NRF_RTC_TIMER_CC_INT, cntr + (1UL << 23));
+             }
+-            rtctimer->INTENSET = NRF_TIMER_INT_MASK(NRF_RTC_TIMER_CC_INT);
++            Pip_out(rtctimer + PIP_NRF_RTC_RTC0_INTENSET_INDEX, NRF_TIMER_INT_MASK(NRF_RTC_TIMER_CC_INT));
+         }
+     } else {
+-        hwtimer = bsptimer->tmr_reg;
++        hwtimer = (NRF_TIMER_Type *) bsptimer->tmr_reg;
+ 
+         /* Disable ocmp interrupt and set new value */
+         hwtimer->INTENCLR = NRF_TIMER_INT_MASK(NRF_TIMER_CC_INT);
+@@ -224,8 +224,8 @@ nrf_timer_disable_ocmp(NRF_TIMER_Type *hwtimer)
+ static void
+ nrf_rtc_disable_ocmp(NRF_RTC_Type *rtctimer)
+ {
+-    rtctimer->INTENCLR = NRF_TIMER_INT_MASK(NRF_RTC_TIMER_CC_INT);
+-    rtctimer->INTENCLR = RTC_INTENCLR_TICK_Msk;
++    Pip_out((uint32_t) rtctimer + PIP_NRF_RTC_RTC0_INTENCLR_INDEX, NRF_TIMER_INT_MASK(NRF_RTC_TIMER_CC_INT));
++    Pip_out((uint32_t) rtctimer + PIP_NRF_RTC_RTC0_INTENCLR_INDEX, RTC_INTENCLR_TICK_Msk);
+ }
+ 
+ static uint32_t
+@@ -234,17 +234,17 @@ hal_timer_read_bsptimer(struct nrf52_hal_timer *bsptimer)
+     uint32_t low32;
+     os_sr_t sr;
+     uint32_t tcntr;
+-    NRF_RTC_Type *rtctimer;
++    uint32_t rtctimer;
+ 
+-    rtctimer = (NRF_RTC_Type *)bsptimer->tmr_reg;
++    rtctimer = (uint32_t)bsptimer->tmr_reg;
+     OS_ENTER_CRITICAL(sr);
+     tcntr = bsptimer->tmr_cntr;
+-    low32 = rtctimer->COUNTER;
+-    if (rtctimer->EVENTS_OVRFLW) {
++    low32 = Pip_in(rtctimer + PIP_NRF_RTC_RTC0_COUNTER_INDEX);
++    if (Pip_in(rtctimer + PIP_NRF_RTC_RTC0_EVENTS_OVRFLW_INDEX)) {
+         tcntr += (1UL << 24);
+         bsptimer->tmr_cntr = tcntr;
+-        low32 = rtctimer->COUNTER;
+-        rtctimer->EVENTS_OVRFLW = 0;
++        low32 = Pip_in(rtctimer + PIP_NRF_RTC_RTC0_COUNTER_INDEX);
++        Pip_out(rtctimer + PIP_NRF_RTC_RTC0_EVENTS_OVRFLW_INDEX, 0);
+         NVIC_SetPendingIRQ(bsptimer->tmr_irq_num);
+     }
+     tcntr |= low32;
+@@ -274,7 +274,7 @@ hal_timer_chk_queue(struct nrf52_hal_timer *bsptimer)
+         if (bsptimer->tmr_rtc) {
+             tcntr = hal_timer_read_bsptimer(bsptimer);
+         } else {
+-            tcntr = nrf_read_timer_cntr(bsptimer->tmr_reg);
++            tcntr = nrf_read_timer_cntr((void *)bsptimer->tmr_reg);
+         }
+         if ((int32_t)(tcntr - timer->expiry) >= 0) {
+             TAILQ_REMOVE(&bsptimer->hal_timer_q, timer, link);
+@@ -293,7 +293,7 @@ hal_timer_chk_queue(struct nrf52_hal_timer *bsptimer)
+         if (bsptimer->tmr_rtc) {
+             nrf_rtc_disable_ocmp((NRF_RTC_Type *)bsptimer->tmr_reg);
+         } else {
+-            nrf_timer_disable_ocmp(bsptimer->tmr_reg);
++            nrf_timer_disable_ocmp((void *)bsptimer->tmr_reg);
+         }
+     }
+     OS_EXIT_CRITICAL(sr);
+@@ -361,25 +361,25 @@ hal_rtc_timer_irq_handler(struct nrf52_hal_timer *bsptimer)
+     uint32_t overflow;
+     uint32_t compare;
+     uint32_t tick;
+-    NRF_RTC_Type *rtctimer;
++    uint32_t rtctimer;
+ 
+     os_trace_isr_enter();
+ 
+     /* Check interrupt source. If set, clear them */
+-    rtctimer = (NRF_RTC_Type *)bsptimer->tmr_reg;
+-    compare = rtctimer->EVENTS_COMPARE[NRF_RTC_TIMER_CC_INT];
++    rtctimer = bsptimer->tmr_reg;
++    compare = Pip_in(rtctimer + PIP_NRF_RTC_RTC0_EVENTS_COMPARE_0_INDEX + NRF_RTC_TIMER_CC_INT);
+     if (compare) {
+-        rtctimer->EVENTS_COMPARE[NRF_RTC_TIMER_CC_INT] = 0;
++        Pip_out(rtctimer + PIP_NRF_RTC_RTC0_EVENTS_COMPARE_0_INDEX + NRF_RTC_TIMER_CC_INT, 0);
+     }
+ 
+-    tick = rtctimer->EVENTS_TICK;
++    tick = Pip_in(rtctimer + PIP_NRF_RTC_RTC0_EVENTS_TICK_INDEX);
+     if (tick) {
+-        rtctimer->EVENTS_TICK = 0;
++        Pip_out(rtctimer + PIP_NRF_RTC_RTC0_EVENTS_TICK_INDEX, 0);
+     }
+ 
+-    overflow = rtctimer->EVENTS_OVRFLW;
++    overflow = Pip_in(rtctimer + PIP_NRF_RTC_RTC0_EVENTS_OVRFLW_INDEX);
+     if (overflow) {
+-        rtctimer->EVENTS_OVRFLW = 0;
++        Pip_out(rtctimer + PIP_NRF_RTC_RTC0_EVENTS_OVRFLW_INDEX, 0);
+         bsptimer->tmr_cntr += (1UL << 24);
+     }
+ 
+@@ -398,7 +398,7 @@ hal_rtc_timer_irq_handler(struct nrf52_hal_timer *bsptimer)
+     hal_timer_chk_queue(bsptimer);
+ 
+     /* Recommended by nordic to make sure interrupts are cleared */
+-    compare = rtctimer->EVENTS_COMPARE[NRF_RTC_TIMER_CC_INT];
++    compare = Pip_in(rtctimer + PIP_NRF_RTC_RTC0_EVENTS_COMPARE_0_INDEX + NRF_RTC_TIMER_CC_INT);
+ 
+     os_trace_isr_exit();
+ }
+@@ -468,7 +468,7 @@ hal_timer_init(int timer_num, void *cfg)
+     int rc;
+     uint8_t irq_num;
+     struct nrf52_hal_timer *bsptimer;
+-    void *hwtimer;
++    uint32_t hwtimer;
+     hal_timer_irq_handler_t irq_isr;
+ 
+     NRF52_HAL_TIMER_RESOLVE(timer_num, bsptimer);
+@@ -518,19 +518,14 @@ hal_timer_init(int timer_num, void *cfg)
+ #if MYNEWT_VAL(TIMER_5)
+         case 5:
+             irq_num = RTC0_IRQn;
+-            hwtimer = NRF_RTC0;
++            hwtimer = PIP_NRF_RTC_RTC0_BASE;
+             irq_isr = nrf52_timer5_irq_handler;
+             bsptimer->tmr_rtc = 1;
+             break;
+ #endif
+         default:
+-            hwtimer = NULL;
+-            break;
+-    }
+-
+-    if (hwtimer == NULL) {
+-        rc = EINVAL;
+-        goto err;
++            rc = EINVAL;
++            goto err;
+     }
+ 
+     bsptimer->tmr_reg = hwtimer;
+@@ -567,15 +562,21 @@ int
+ hal_timer_config(int timer_num, uint32_t freq_hz)
+ {
+     int rc;
++#if 0
+     uint8_t prescaler;
++#endif
+     os_sr_t sr;
++#if 0
+     uint32_t div;
+     uint32_t min_delta;
+     uint32_t max_delta;
++#endif
+     struct nrf52_hal_timer *bsptimer;
++#if 0
+     NRF_TIMER_Type *hwtimer;
++#endif
+ #if MYNEWT_VAL(TIMER_5)
+-    NRF_RTC_Type *rtctimer;
++    uint32_t rtctimer;
+ #endif
+ 
+     NRF52_HAL_TIMER_RESOLVE(timer_num, bsptimer);
+@@ -583,8 +584,7 @@ hal_timer_config(int timer_num, uint32_t freq_hz)
+ #if MYNEWT_VAL(TIMER_5)
+     if (timer_num == 5) {
+         /* NOTE: we only allow the RTC frequency to be set at 32768 */
+-        if (bsptimer->tmr_enabled || (freq_hz != 32768) ||
+-            (bsptimer->tmr_reg == NULL)) {
++        if (bsptimer->tmr_enabled || (freq_hz != 32768)) {
+             rc = EINVAL;
+             goto err;
+         }
+@@ -594,21 +594,21 @@ hal_timer_config(int timer_num, uint32_t freq_hz)
+ 
+         OS_ENTER_CRITICAL(sr);
+ 
+-        rtctimer = (NRF_RTC_Type *)bsptimer->tmr_reg;
++        rtctimer = bsptimer->tmr_reg;
+ 
+         /* Stop the timer first */
+-        rtctimer->TASKS_STOP = 1;
+-        rtctimer->TASKS_CLEAR = 1;
++        Pip_out(rtctimer + PIP_NRF_RTC_RTC0_TASKS_STOP_INDEX, 1);
++        Pip_out(rtctimer + PIP_NRF_RTC_RTC0_TASKS_CLEAR_INDEX, 1);
+ 
+         /* Always no prescaler */
+-        rtctimer->PRESCALER = 0;
++        Pip_out(rtctimer + PIP_NRF_RTC_RTC0_PRESCALER_INDEX, 0);
+ 
+         /* Clear overflow events and set overflow interrupt */
+-        rtctimer->EVENTS_OVRFLW = 0;
+-        rtctimer->INTENSET = RTC_INTENSET_OVRFLW_Msk;
++        Pip_out(rtctimer + PIP_NRF_RTC_RTC0_EVENTS_OVRFLW_INDEX, 0);
++        Pip_out(rtctimer + PIP_NRF_RTC_RTC0_INTENSET_INDEX, RTC_INTENSET_OVRFLW_Msk);
+ 
+         /* Start the timer */
+-        rtctimer->TASKS_START = 1;
++        Pip_out(rtctimer + PIP_NRF_RTC_RTC0_TASKS_START_INDEX, 1);
+ 
+         /* Set isr in vector table and enable interrupt */
+         NVIC_EnableIRQ(bsptimer->tmr_irq_num);
+@@ -617,7 +617,7 @@ hal_timer_config(int timer_num, uint32_t freq_hz)
+         return 0;
+     }
+ #endif
+-
++#if 0
+     /* Set timer to desired frequency */
+     div = NRF52_MAX_TIMER_FREQ / freq_hz;
+ 
+@@ -626,8 +626,7 @@ hal_timer_config(int timer_num, uint32_t freq_hz)
+      * If hwtimer is NULL it means that the timer was not initialized prior
+      * to call.
+      */
+-    if (bsptimer->tmr_enabled || (div == 0) || (div > 512) ||
+-        (bsptimer->tmr_reg == NULL)) {
++    if (bsptimer->tmr_enabled || (div == 0) || (div > 512)) {
+         rc = EINVAL;
+         goto err;
+     }
+@@ -676,6 +675,7 @@ hal_timer_config(int timer_num, uint32_t freq_hz)
+     hwtimer->TASKS_START = 1;
+ 
+     NVIC_EnableIRQ(bsptimer->tmr_irq_num);
++#endif
+ 
+     OS_EXIT_CRITICAL(sr);
+ 
+@@ -717,7 +717,7 @@ hal_timer_deinit(int timer_num)
+         hwtimer->TASKS_SHUTDOWN = 1;
+     }
+     bsptimer->tmr_enabled = 0;
+-    bsptimer->tmr_reg = NULL;
++    bsptimer->tmr_reg = 0;
+ 
+ #if MYNEWT_VAL_CHOICE(MCU_HFCLK_SOURCE, HFXO)
+     if (timer_num != 5) {
+@@ -765,6 +765,7 @@ hal_timer_get_resolution(int timer_num)
+  *
+  * @return uint32_t The timer counter register.
+  */
++
+ uint32_t
+ hal_timer_read(int timer_num)
+ {
+@@ -775,8 +776,6 @@ hal_timer_read(int timer_num)
+     NRF52_HAL_TIMER_RESOLVE(timer_num, bsptimer);
+     if (bsptimer->tmr_rtc) {
+         tcntr = hal_timer_read_bsptimer(bsptimer);
+-    } else {
+-        tcntr = nrf_read_timer_cntr(bsptimer->tmr_reg);
+     }
+ 
+     return tcntr;
+@@ -839,7 +838,7 @@ hal_timer_set_cb(int timer_num, struct hal_timer *timer, hal_timer_cb cb_func,
+     err:
+     return rc;
+ }
+-
++#if 0
+ int
+ hal_timer_start(struct hal_timer *timer, uint32_t ticks)
+ {
+@@ -857,6 +856,7 @@ hal_timer_start(struct hal_timer *timer, uint32_t ticks)
+     rc = hal_timer_start_at(timer, tick);
+     return rc;
+ }
++#endif
+ 
+ int
+ hal_timer_start_at(struct hal_timer *timer, uint32_t tick)
+@@ -939,8 +939,6 @@ hal_timer_stop(struct hal_timer *timer)
+             } else {
+                 if (bsptimer->tmr_rtc) {
+                     nrf_rtc_disable_ocmp((NRF_RTC_Type *)bsptimer->tmr_reg);
+-                } else {
+-                    nrf_timer_disable_ocmp(bsptimer->tmr_reg);
+                 }
+             }
+         }
+-- 
+2.20.1
+
