@@ -1955,7 +1955,7 @@ static int xipfs_stat0(vfs_mount_t *vfs_mp,
         return -EIO;
     }
 
-    if (strcmp(xipath.witness->path, xipath.path) != 0) {
+    if (strncmp(xipath.witness->path, xipath.path, len) != 0) {
         return -ENOENT;
     }
 
