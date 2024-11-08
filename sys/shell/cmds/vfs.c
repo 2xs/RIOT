@@ -908,7 +908,8 @@ static int _ls_handler(int argc, char **argv)
     char *path = argv[1];
     int res;
     int ret = 0;
-    res = vfs_normalize_path(path, path, strlen(path) + 1);
+    size_t path_len = strlen(path);
+    res = vfs_normalize_path(path, path, path_len + 1);
     if (res < 0) {
         printf("Invalid path \"%s\": %s\n", path, tiny_strerror(res));
         return 5;
@@ -941,16 +942,12 @@ static int _ls_handler(int argc, char **argv)
             break;
         }
 
-#ifdef MODULE_XIPFS
-        size_t slash = path[strlen(path)-1] == '/';
         snprintf(path_name, sizeof(path_name), "%s%s%s", path,
-            (slash == 1) ? "": "/", entry.d_name);
-#else
-        snprintf(path_name, sizeof(path_name), "%s/%s", path, entry.d_name);
-#endif /* MODULE_XIPFS */
+            (path[path_len-1] == '/') ? "" : "/", entry.d_name);
         vfs_stat(path_name, &stat);
         if (stat.st_mode & S_IFDIR) {
-            printf("%s/\n", entry.d_name);
+            printf("%s%s\n", entry.d_name, (entry.d_name[
+                strlen(entry.d_name)-1] == '/') ? "" : "/");
         } else if (stat.st_mode & S_IFREG) {
             printf("%s\t%lu B\n", entry.d_name, stat.st_size);
             ++nfiles;
