@@ -1,0 +1,90 @@
+From e8e380df6be9f56ada7ef49619253b2a77633a65 Mon Sep 17 00:00:00 2001
+From: Damien Amara <damien.amara@univ-lille.fr>
+Date: Mon, 10 Apr 2023 10:35:35 +0200
+Subject: [PATCH 7/7] nimble/controller/src: add a hack in the advertising
+ implementation
+
+The ble_ll_event_add() function ends up calling the
+thread_yield_higher() function which executes the PenSV handler,
+which then executes the scheduler by calling the sched_run()
+function. At this point, the scheduler seems to elect the thread
+that has just been interrupted, allowing the normal processing of
+the interrupt to be completed.
+
+However, in the ported version of RIOT on Pip, the scheduler does
+not re-elect the thread that was just interrupted. During the
+execution of the newly elected thread, the interrupt, not having
+finished being processed, is triggered again. This causes an
+assertion, because the data structures of the advertising state
+machine do not have the expected values.
+
+In order to simulate the behavior of the non-ported version, the
+global variable noyld is set to 1, before the execution of the
+ble_ll_event_add() function. The handler of the interrupt PendSV
+will check if this variable is equal to 1. If it is the case, it
+will resume the execution of the interrupted thread without
+executing the scheduler. When the ble_ll_event_add() function
+returns, the noyld variable is reset to 0.
+---
+ nimble/controller/src/ble_ll_adv.c | 36 ++++++++++++++++++++++++++++++
+ 1 file changed, 36 insertions(+)
+
+diff --git a/nimble/controller/src/ble_ll_adv.c b/nimble/controller/src/ble_ll_adv.c
+index 3327ba58..7d706296 100644
+--- a/nimble/controller/src/ble_ll_adv.c
++++ b/nimble/controller/src/ble_ll_adv.c
+@@ -210,6 +210,11 @@ struct ble_ll_adv_sm
+ struct ble_ll_adv_sm g_ble_ll_adv_sm[BLE_ADV_INSTANCES];
+ struct ble_ll_adv_sm *g_ble_ll_cur_adv_sm;
+ 
++#if defined(CPU_FAM_NRF52_PIP)
++/* XXX hack */
++extern uint32_t noyld;
++#endif
++
+ static void ble_ll_adv_drop_event(struct ble_ll_adv_sm *advsm);
+ 
+ static struct ble_ll_adv_sm *
+@@ -1038,8 +1043,39 @@ ble_ll_adv_tx_done(void *arg)
+     } else {
+         BLE_LL_ASSERT(0);
+     }
++#else
++#if defined(CPU_FAM_NRF52_PIP)
++    /*
++     * XXX hack
++     *
++     * The ble_ll_event_add() function ends up calling the
++     * thread_yield_higher() function which executes the PenSV handler,
++     * which then executes the scheduler by calling the sched_run()
++     * function. At this point, the scheduler seems to elect the thread
++     * that has just been interrupted, allowing the normal processing of
++     * the interrupt to be completed.
++     *
++     * However, in the ported version of RIOT on Pip, the scheduler does
++     * not re-elect the thread that was just interrupted. During the
++     * execution of the newly elected thread, the interrupt, not having
++     * finished being processed, is triggered again. This causes an
++     * assertion, because the data structures of the advertising state
++     * machine do not have the expected values.
++     *
++     * In order to simulate the behavior of the non-ported version, the
++     * global variable noyld is set to 1, before the execution of the
++     * ble_ll_event_add() function. The handler of the interrupt PendSV
++     * will check if this variable is equal to 1. If it is the case, it
++     * will resume the execution of the interrupted thread without
++     * executing the scheduler. When the ble_ll_event_add() function
++     * returns, the noyld variable is reset to 0.
++     */
++    noyld = 1;
++    ble_ll_event_add(&advsm->adv_txdone_ev);
++    noyld = 0;
+ #else
+     ble_ll_event_add(&advsm->adv_txdone_ev);
++#endif
+ #endif
+ 
+     ble_ll_state_set(BLE_LL_STATE_STANDBY);
+-- 
+2.20.1
+

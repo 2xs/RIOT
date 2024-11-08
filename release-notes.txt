@@ -530,8 +530,9 @@ License
 
 All code files contain licensing information.
 
+
 RIOT-2024.04 "UwUtastic" - Release Notes
-========================================
+============================
 RIOT is a multi-threading operating system which enables soft real-time
 capabilities and comes with support for a range of devices that are typically
 found in the Internet of Things: 8-bit and 16-bit microcontrollers as well as
@@ -1077,6 +1078,7 @@ License
 * Some external sources and packages are published under a separate license.
 
 All code files contain licensing information.
+
 
 RIOT-2024.01 - Release Notes
 ============================
