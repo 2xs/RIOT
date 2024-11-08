@@ -1303,6 +1303,19 @@ static int xipfs_readdir0(vfs_DIR *dirp, vfs_dirent_t *entry)
             return -ENAMETOOLONG;
         }
         if (direntp->dirname[i] == '\0') {
+            if (direntp->filp->path[i] == '\0') {
+                /* empty directory */
+                return 0;
+            }
+            if (direntp->filp->path[i] == '/') {
+                if (i == XIPFS_PATH_MAX-1) {
+                    return -ENAMETOOLONG;
+                }
+                if (direntp->filp->path[i+1] == '\0') {
+                    /* empty directory */
+                    return 0;
+                }
+            }
             if (direntp->filp->path[i] == '/') {
                 /* skip first slash */
                 i++;
