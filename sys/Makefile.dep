@@ -418,6 +418,8 @@ ifneq (,$(filter devfs,$(USEMODULE)))
 endif
 
 ifneq (,$(filter xipfs,$(USEMODULE)))
+  # xipfs only makes sense if the flash memory is addressable
+  FEATURES_REQUIRED += periph_flashpage_in_address_space
   USEMODULE += periph_flashpage
   USEMODULE += vfs
 endif

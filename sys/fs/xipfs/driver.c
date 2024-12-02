@@ -57,13 +57,6 @@
 #include "include/path.h"
 
 /*
- * XXX: Workaround solution as most MCUs do not appear to define
- * this macro that allows determining if their non-volatile
- * memory is addressable
- */
-#define MODULE_PERIPH_FLASHPAGE_IN_ADDRESS_SPACE
-
-/*
  * The eXecute In Place File System only makes sense if the
  * non-volatile memory of the target MCU is addressable
  */

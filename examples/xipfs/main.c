@@ -18,22 +18,9 @@
  * @}
  */
 
-/*
- * RIOT includes
- */
-/*
- * XXX: Workaround solution as most MCUs do not appear to define
- * this macro that allows determining if their non-volatile
- * memory is addressable
- */
-#define MODULE_PERIPH_FLASHPAGE_IN_ADDRESS_SPACE
+#include "fs/xipfs.h"
 #include "periph/flashpage.h"
 #include "shell.h"
-
-/*
- * xipfs include
- */
-#include "fs/xipfs.h"
 
 /**
  * @def PANIC
