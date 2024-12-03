@@ -19,6 +19,10 @@ SECTIONS
     .text :
     {
         . = ALIGN( 4 ) ;
+        /*
+         * The ._start section MUST be the first one
+         */
+        *(._start)
         *(.text*)
         . = ALIGN( 4 ) ;
         __metadata_off = . ;

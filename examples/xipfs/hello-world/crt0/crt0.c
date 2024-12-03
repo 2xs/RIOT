@@ -59,6 +59,18 @@
  */
 #define UNUSED __attribute__((unused))
 
+/**
+ * @internal
+ *
+ * @def SECTION
+ *
+ * @brief Instructs the compiler that a variable (or function)
+ * lives in a particular section
+ *
+ * @param name The section name
+ */
+#define SECTION(name) __attribute__((section(name)))
+
 #else
 
 #error "GCC is required to compile this source file"
@@ -363,7 +375,7 @@ static NAKED void die(err_msg_id_t id UNUSED);
  * @param ctx A pointer to a memory region containg a CRT0 data
  * structure
  */
-NORETURN void _start(crt0_ctx_t *ctx)
+SECTION("._start") NORETURN void _start(crt0_ctx_t *ctx)
 {
     /* get memory layout */
     uint32_t binary_addr = (uint32_t)ctx->bin_base;

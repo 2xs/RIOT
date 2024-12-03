@@ -15,9 +15,6 @@ CFLAGS         += -Werror
 CFLAGS         += -mthumb
 CFLAGS         += -mcpu=cortex-m4
 CFLAGS         += -ffreestanding
-# Do not reorder top-level functions; output them in the same
-# order they appear in the input file
-CFLAGS         += -fno-toplevel-reorder
 ifdef DEBUG
 CFLAGS         += -Og
 CFLAGS         += -ggdb
