@@ -508,17 +508,21 @@ int xipfs_path_new_n(xipfs_mount_t *xipfs_mp,
         /* one file at least */
         do {
             for (j = 0; j < n; j++) {
-                if (strncmp(xipaths[j].path, filp->path, xipaths[j].last_slash) == 0) {
+                if (strncmp(xipaths[j].path, filp->path,
+                        xipaths[j].last_slash) == 0) {
                     xipaths[j].parent++;
                 }
-                if (xipaths[j].info == XIPFS_PATH_UNDEFINED || xipaths[j].info == XIPFS_PATH_CREATABLE) {
-                    if ((i = compare_paths(filp->path, xipaths[j].path)) == XIPFS_PATH_MAX) {
+                if (xipaths[j].info == XIPFS_PATH_UNDEFINED ||
+                    xipaths[j].info == XIPFS_PATH_CREATABLE) {
+                    if ((i = compare_paths(filp->path, xipaths[j].path))
+                            == XIPFS_PATH_MAX) {
                         return -1;
                     }
                     if (exists_as_file(filp->path, xipaths[j].path, i)) {
                         xipaths[j].info = XIPFS_PATH_EXISTS_AS_FILE;
                         xipaths[j].witness = filp;
-                    } else if (exists_as_empty_dir(filp->path, xipaths[j].path, i)) {
+                    } else if (exists_as_empty_dir(filp->path,
+                                   xipaths[j].path, i)) {
                         if (xipaths[j].path[xipaths[j].len-1] != '/') {
                             if (xipaths[j].len == XIPFS_PATH_MAX-1) {
                                 return -ENAMETOOLONG;
@@ -528,7 +532,8 @@ int xipfs_path_new_n(xipfs_mount_t *xipfs_mp,
                         }
                         xipaths[j].info = XIPFS_PATH_EXISTS_AS_EMPTY_DIR;
                         xipaths[j].witness = filp;
-                    } else if (exists_as_nonempty_dir(filp->path, xipaths[j].path, i)) {
+                    } else if (exists_as_nonempty_dir(filp->path,
+                                   xipaths[j].path, i)) {
                         if (xipaths[j].path[xipaths[j].len-1] != '/') {
                             if (xipaths[j].len == XIPFS_PATH_MAX-1) {
                                 return -ENAMETOOLONG;
@@ -538,10 +543,12 @@ int xipfs_path_new_n(xipfs_mount_t *xipfs_mp,
                         }
                         xipaths[j].info = XIPFS_PATH_EXISTS_AS_NONEMPTY_DIR;
                         xipaths[j].witness = filp;
-                    } else if (invalid_because_not_dirs(filp->path, xipaths[j].path, i)) {
+                    } else if (invalid_because_not_dirs(filp->path,
+                                   xipaths[j].path, i)) {
                         xipaths[j].info = XIPFS_PATH_INVALID_BECAUSE_NOT_DIRS;
                         xipaths[j].witness = filp;
-                    } else if (creatable(filp->path, xipaths[j].path, xipaths[j].last_slash+1)) {
+                    } else if (creatable(filp->path, xipaths[j].path,
+                                   xipaths[j].last_slash+1)) {
                         xipaths[j].info = XIPFS_PATH_CREATABLE;
                         xipaths[j].witness = filp;
                     }

@@ -396,8 +396,7 @@ static const char *get_rel_path(vfs_mount_t *vfs_mp,
  * @return Returns zero if the path is already displayed, or a
  * negative value otherwise
  */
-static int already_display(vfs_DIR *dirp,
-                           xipfs_file_t *filp,
+static int already_display(vfs_DIR *dirp, xipfs_file_t *filp,
                            size_t n)
 {
     xipfs_mount_t *xipfs_mp;
@@ -885,10 +884,8 @@ static off_t xipfs_lseek(vfs_file_t *vfs_filp, off_t off, int whence)
     return ret;
 }
 
-static int xipfs_open0(vfs_file_t *vfs_filp,
-                       const char *name,
-                       int flags,
-                       mode_t mode)
+static int xipfs_open0(vfs_file_t *vfs_filp, const char *name,
+                       int flags, mode_t mode)
 {
     char buf[XIPFS_PATH_MAX];
     xipfs_mount_t *xipfs_mp;
@@ -969,7 +966,8 @@ static int xipfs_open0(vfs_file_t *vfs_filp,
         if (xipath.path[xipath.len-1] == '/') {
             return -EISDIR;
         }
-        if (xipath.witness != NULL && !(xipath.dirname[0] == '/' && xipath.dirname[1] == '\0')) {
+        if (xipath.witness != NULL && !(xipath.dirname[0] == '/' &&
+                xipath.dirname[1] == '\0')) {
             if (strcmp(xipath.witness->path, xipath.dirname) == 0) {
                 if (sync_remove_file(xipfs_mp, xipath.witness) < 0) {
                     return -EIO;
@@ -1006,10 +1004,8 @@ static int xipfs_open0(vfs_file_t *vfs_filp,
     return 0;
 }
 
-static int xipfs_open(vfs_file_t *vfs_filp,
-                      const char *name,
-                      int flags,
-                      mode_t mode)
+static int xipfs_open(vfs_file_t *vfs_filp, const char *name,
+                      int flags, mode_t mode)
 {
     int ret;
 
@@ -1020,8 +1016,7 @@ static int xipfs_open(vfs_file_t *vfs_filp,
     return ret;
 }
 
-static ssize_t xipfs_read0(vfs_file_t *vfs_filp,
-                           void *dest,
+static ssize_t xipfs_read0(vfs_file_t *vfs_filp, void *dest,
                            size_t nbytes)
 {
     off_t size;
@@ -1064,8 +1059,7 @@ static ssize_t xipfs_read0(vfs_file_t *vfs_filp,
     return i;
 }
 
-static ssize_t xipfs_read(vfs_file_t *vfs_filp,
-                          void *dest,
+static ssize_t xipfs_read(vfs_file_t *vfs_filp, void *dest,
                           size_t nbytes)
 {
     int ret;
@@ -1077,8 +1071,7 @@ static ssize_t xipfs_read(vfs_file_t *vfs_filp,
     return ret;
 }
 
-static ssize_t xipfs_write0(vfs_file_t *vfs_filp,
-                            const void *src,
+static ssize_t xipfs_write0(vfs_file_t *vfs_filp, const void *src,
                             size_t nbytes)
 {
     off_t max_pos;
@@ -1117,8 +1110,7 @@ static ssize_t xipfs_write0(vfs_file_t *vfs_filp,
     return i;
 }
 
-static ssize_t xipfs_write(vfs_file_t *vfs_filp,
-                           const void *src,
+static ssize_t xipfs_write(vfs_file_t *vfs_filp, const void *src,
                            size_t nbytes)
 {
     int ret;
@@ -1238,8 +1230,8 @@ static int xipfs_opendir0(vfs_DIR *dirp, const char *dirname)
         if (len+1 == XIPFS_PATH_MAX) {
             return -ENAMETOOLONG;
         }
-        /* ensure dirname ends with a slash to indicate it's a
-         * directory */
+        /* ensure dirname ends with a slash to indicate
+         * it's a directory */
         direntp->dirname[len] = '/';
         direntp->dirname[len+1] = '\0';
     }
@@ -1519,8 +1511,10 @@ static int xipfs_unlink0(vfs_mount_t *vfs_mp, const char *name)
     if (sync_remove_file(xipfs_mp, xipath.witness) < 0) {
         return -EIO;
     }
-    if (xipath.parent == 1 && !(xipath.dirname[0] == '/' && xipath.dirname[1] == '\0')) {
-        if (xipfs_fs_new_file(xipfs_mp, xipath.dirname, FLASHPAGE_SIZE, 0) == NULL) {
+    if (xipath.parent == 1 && !(xipath.dirname[0] ==
+            '/' && xipath.dirname[1] == '\0')) {
+        if (xipfs_fs_new_file(xipfs_mp, xipath.dirname,
+                FLASHPAGE_SIZE, 0) == NULL) {
             return -EIO;
         }
     }
@@ -1539,8 +1533,7 @@ static int xipfs_unlink(vfs_mount_t *vfs_mp, const char *name)
     return ret;
 }
 
-static int xipfs_mkdir0(vfs_mount_t *vfs_mp,
-                        const char *name,
+static int xipfs_mkdir0(vfs_mount_t *vfs_mp, const char *name,
                         mode_t mode)
 {
     xipfs_mount_t *xipfs_mp;
@@ -1601,15 +1594,15 @@ static int xipfs_mkdir0(vfs_mount_t *vfs_mp,
         }
     }
 
-    if (xipfs_fs_new_file(xipfs_mp, xipath.path, FLASHPAGE_SIZE, 0) == NULL) {
+    if (xipfs_fs_new_file(xipfs_mp, xipath.path,
+            FLASHPAGE_SIZE, 0) == NULL) {
         return -EIO;
     }
 
     return 0;
 }
 
-static int xipfs_mkdir(vfs_mount_t *vfs_mp,
-                       const char *name,
+static int xipfs_mkdir(vfs_mount_t *vfs_mp, const char *name,
                        mode_t mode)
 {
     int ret;
@@ -1621,8 +1614,7 @@ static int xipfs_mkdir(vfs_mount_t *vfs_mp,
     return ret;
 }
 
-static int xipfs_rmdir0(vfs_mount_t *vfs_mp,
-                        const char *name)
+static int xipfs_rmdir0(vfs_mount_t *vfs_mp, const char *name)
 {
     xipfs_mount_t *xipfs_mp;
     xipfs_path_t xipath;
@@ -1671,8 +1663,10 @@ static int xipfs_rmdir0(vfs_mount_t *vfs_mp,
     if (sync_remove_file(xipfs_mp, xipath.witness) < 0) {
         return -EIO;
     }
-    if (xipath.parent == 1 && !(xipath.dirname[0] == '/' && xipath.dirname[1] == '\0')) {
-        if (xipfs_fs_new_file(xipfs_mp, xipath.dirname, FLASHPAGE_SIZE, 0) == NULL) {
+    if (xipath.parent == 1 && !(xipath.dirname[0] ==
+            '/' && xipath.dirname[1] == '\0')) {
+        if (xipfs_fs_new_file(xipfs_mp, xipath.dirname,
+                FLASHPAGE_SIZE, 0) == NULL) {
             return -EIO;
         }
     }
@@ -1680,8 +1674,7 @@ static int xipfs_rmdir0(vfs_mount_t *vfs_mp,
     return 0;
 }
 
-static int xipfs_rmdir(vfs_mount_t *vfs_mp,
-                       const char *name)
+static int xipfs_rmdir(vfs_mount_t *vfs_mp, const char *name)
 {
     int ret;
 
@@ -1692,8 +1685,7 @@ static int xipfs_rmdir(vfs_mount_t *vfs_mp,
     return ret;
 }
 
-static int xipfs_rename0(vfs_mount_t *vfs_mp,
-                         const char *from_path,
+static int xipfs_rename0(vfs_mount_t *vfs_mp, const char *from_path,
                          const char *to_path)
 {
     xipfs_mount_t *xipfs_mp;
@@ -1742,7 +1734,8 @@ static int xipfs_rename0(vfs_mount_t *vfs_mp,
             if (xipaths[0].witness == xipaths[1].witness) {
                 return 0;
             }
-            if (xipfs_file_rename(xipaths[0].witness, xipaths[1].path) < 0) {
+            if (xipfs_file_rename(xipaths[0].witness,
+                    xipaths[1].path) < 0) {
                 DEBUG("%s\n", xipfs_strerror(xipfs_errno));
                 return -EIO;
             }
@@ -1761,7 +1754,8 @@ static int xipfs_rename0(vfs_mount_t *vfs_mp,
             if (xipaths[1].path[xipaths[1].len-1] == '/') {
                 return -ENOTDIR;
             }
-            if (xipfs_file_rename(xipaths[0].witness, xipaths[1].path) < 0) {
+            if (xipfs_file_rename(xipaths[0].witness,
+                    xipaths[1].path) < 0) {
                 DEBUG("%s\n", xipfs_strerror(xipfs_errno));
                 return -EIO;
             }
@@ -1783,7 +1777,8 @@ static int xipfs_rename0(vfs_mount_t *vfs_mp,
             if (xipaths[0].witness == xipaths[1].witness) {
                 return 0;
             }
-            if (xipfs_file_rename(xipaths[0].witness, xipaths[1].path) < 0) {
+            if (xipfs_file_rename(xipaths[0].witness,
+                    xipaths[1].path) < 0) {
                 DEBUG("%s\n", xipfs_strerror(xipfs_errno));
                 return -EIO;
             }
@@ -1808,10 +1803,12 @@ static int xipfs_rename0(vfs_mount_t *vfs_mp,
             }
             /* check whether an attempt was made to make a
              * directory a subdirectory of itself */
-            if (strncmp(xipaths[0].path, xipaths[1].path, xipaths[0].len) == 0) {
+            if (strncmp(xipaths[0].path, xipaths[1].path,
+                    xipaths[0].len) == 0) {
                 return -EINVAL;
             }
-            if (xipfs_file_rename(xipaths[0].witness, xipaths[1].path) < 0) {
+            if (xipfs_file_rename(xipaths[0].witness,
+                    xipaths[1].path) < 0) {
                 DEBUG("%s\n", xipfs_strerror(xipfs_errno));
                 return -EIO;
             }
@@ -1832,10 +1829,12 @@ static int xipfs_rename0(vfs_mount_t *vfs_mp,
         {
             /* check whether an attempt was made to make a
              * directory a subdirectory of itself */
-            if (strncmp(xipaths[0].path, xipaths[1].path, xipaths[0].len) == 0) {
+            if (strncmp(xipaths[0].path, xipaths[1].path,
+                    xipaths[0].len) == 0) {
                 return -EINVAL;
             }
-            if ((ret = xipfs_fs_rename_all(xipfs_mp, xipaths[0].path, xipaths[1].path)) < 0) {
+            if ((ret = xipfs_fs_rename_all(xipfs_mp, xipaths[0].path,
+                    xipaths[1].path)) < 0) {
                 DEBUG("%s\n", xipfs_strerror(xipfs_errno));
                 return -EIO;
             }
@@ -1860,10 +1859,12 @@ static int xipfs_rename0(vfs_mount_t *vfs_mp,
             }
             /* check whether an attempt was made to make a
              * directory a subdirectory of itself */
-            if (strncmp(xipaths[0].path, xipaths[1].path, xipaths[0].len) == 0) {
+            if (strncmp(xipaths[0].path, xipaths[1].path,
+                    xipaths[0].len) == 0) {
                 return -EINVAL;
             }
-            if ((ret = xipfs_fs_rename_all(xipfs_mp, xipaths[0].path, xipaths[1].path)) < 0) {
+            if ((ret = xipfs_fs_rename_all(xipfs_mp, xipaths[0].path,
+                    xipaths[1].path)) < 0) {
                 DEBUG("%s\n", xipfs_strerror(xipfs_errno));
                 return -EIO;
             }
@@ -1884,9 +1885,11 @@ static int xipfs_rename0(vfs_mount_t *vfs_mp,
         return -EIO;
     }
 
-    if (xipaths[0].parent == renamed && !(xipaths[0].dirname[0] == '/' && xipaths[0].dirname[1] == '\0')) {
+    if (xipaths[0].parent == renamed && !(xipaths[0].dirname[0] ==
+            '/' && xipaths[0].dirname[1] == '\0')) {
         if (strcmp(xipaths[0].dirname, xipaths[1].dirname) != 0) {
-            if (xipfs_fs_new_file(xipfs_mp, xipaths[0].dirname, FLASHPAGE_SIZE, 0) == NULL) {
+            if (xipfs_fs_new_file(xipfs_mp, xipaths[0].dirname,
+                    FLASHPAGE_SIZE, 0) == NULL) {
                 return -EIO;
             }
         }
@@ -1903,8 +1906,7 @@ static int xipfs_rename0(vfs_mount_t *vfs_mp,
     return 0;
 }
 
-static int xipfs_rename(vfs_mount_t *vfs_mp,
-                        const char *from_path,
+static int xipfs_rename(vfs_mount_t *vfs_mp, const char *from_path,
                         const char *to_path)
 {
     int ret;
@@ -1916,8 +1918,7 @@ static int xipfs_rename(vfs_mount_t *vfs_mp,
     return ret;
 }
 
-static int xipfs_stat0(vfs_mount_t *vfs_mp,
-                       const char *path,
+static int xipfs_stat0(vfs_mount_t *vfs_mp, const char *path,
                        struct stat *buf)
 {
     xipfs_mount_t *xipfs_mp;
@@ -1986,9 +1987,8 @@ static int xipfs_stat0(vfs_mount_t *vfs_mp,
     return 0;
 }
 
-static int xipfs_stat(vfs_mount_t *vfs_mp,
-                      const char *restrict path,
-                      struct stat *restrict buf)
+static int xipfs_stat(vfs_mount_t *vfs_mp, const char *path,
+                      struct stat *buf)
 {
     int ret;
 
@@ -1999,9 +1999,8 @@ static int xipfs_stat(vfs_mount_t *vfs_mp,
     return ret;
 }
 
-static int xipfs_statvfs0(vfs_mount_t *vfs_mp,
-                          const char *restrict path,
-                          struct statvfs *restrict buf)
+static int xipfs_statvfs0(vfs_mount_t *vfs_mp, const char *path,
+                          struct statvfs *buf)
 {
     unsigned free_pages, page_number;
     xipfs_mount_t *xipfs_mp;
@@ -2041,9 +2040,8 @@ static int xipfs_statvfs0(vfs_mount_t *vfs_mp,
     return 0;
 }
 
-static int xipfs_statvfs(vfs_mount_t *vfs_mp,
-                         const char *restrict path,
-                         struct statvfs *restrict buf)
+static int xipfs_statvfs(vfs_mount_t *vfs_mp, const char *path,
+                         struct statvfs *buf)
 {
     int ret;
 
@@ -2058,10 +2056,8 @@ static int xipfs_statvfs(vfs_mount_t *vfs_mp,
  * xipfs-specific functions
  */
 
-int xipfs_new_file0(vfs_mount_t *vfs_mp,
-                    const char *path,
-                    uint32_t size,
-                    uint32_t exec)
+int xipfs_new_file0(vfs_mount_t *vfs_mp, const char *path,
+                    uint32_t size, uint32_t exec)
 {
     xipfs_mount_t *xipfs_mp;
     xipfs_path_t xipath;
@@ -2111,7 +2107,8 @@ int xipfs_new_file0(vfs_mount_t *vfs_mp,
     if (xipath.path[xipath.len-1] == '/') {
         return -EISDIR;
     }
-    if (xipath.witness != NULL && !(xipath.dirname[0] == '/' && xipath.dirname[1] == '\0')) {
+    if (xipath.witness != NULL && !(xipath.dirname[0] ==
+            '/' && xipath.dirname[1] == '\0')) {
         if (strcmp(xipath.witness->path, xipath.dirname) == 0) {
             if (sync_remove_file(xipfs_mp, xipath.witness) < 0) {
                 return -EIO;
@@ -2157,7 +2154,8 @@ int xipfs_new_file(const char *full_path, uint32_t size, uint32_t exec)
     return ret;
 }
 
-int xipfs_execv0(vfs_mount_t *vfs_mp, const char *path, char *const argv[])
+int xipfs_execv0(vfs_mount_t *vfs_mp, const char *path,
+                 char *const argv[])
 {
     xipfs_mount_t *xipfs_mp;
     xipfs_path_t xipath;
