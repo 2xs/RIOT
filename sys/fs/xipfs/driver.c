@@ -39,7 +39,12 @@
 /*
  * RIOT includes
  */
-#define ENABLE_DEBUG 1
+/*
+ * If ENABLE_DEBUG is defined as non-zero in an implementation
+ * file, all calls to DEBUG will work like printf(3),
+ * outputting the specified information to stdout.
+ */
+#define ENABLE_DEBUG 0
 #include "debug.h"
 #include "fs/xipfs.h"
 #include "mutex.h"
