@@ -29,15 +29,29 @@
  */
 #define PANIC() for (;;);
 
-/*
- * Allocate a new contiguous space for the xipfs_1 file system
+/**
+ * @def NVME0P0_PAGE_NUM
+ *
+ * @brief The number of flash page for the nvme0p0 file system
  */
-XIPFS_NEW_PARTITION(xipfs_1, "/dev/nvme0p0", 10);
+#define NVME0P0_PAGE_NUM 10
+
+/**
+ * @def NVME0P1_PAGE_NUM
+ *
+ * @brief The number of flash page for the nvme0p1 file system
+ */
+#define NVME0P1_PAGE_NUM 15
 
 /*
- * Allocate a new contiguous space for the xipfs_2 file system
+ * Allocate a new contiguous space for the nvme0p0 file system
  */
-XIPFS_NEW_PARTITION(xipfs_2, "/dev/nvme0p1",  15);
+XIPFS_NEW_PARTITION(nvme0p0, "/dev/nvme0p0", NVME0P0_PAGE_NUM);
+
+/*
+ * Allocate a new contiguous space for the nvme0p1 file system
+ */
+XIPFS_NEW_PARTITION(nvme0p1, "/dev/nvme0p1", NVME0P1_PAGE_NUM);
 
 /**
  * @internal
@@ -70,8 +84,8 @@ int main(void)
 {
     char line_buf[SHELL_DEFAULT_BUFSIZE];
 
-    mount_or_format(&xipfs_1);
-    mount_or_format(&xipfs_2);
+    mount_or_format(&nvme0p0);
+    mount_or_format(&nvme0p1);
 
     shell_run(NULL, line_buf, SHELL_DEFAULT_BUFSIZE);
 
