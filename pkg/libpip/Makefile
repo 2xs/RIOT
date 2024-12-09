@@ -1,5 +1,5 @@
 PKG_NAME    = libpip
-PKG_URL     = https://github.com/damaramad/libpip.git
+PKG_URL     = https://github.com/2xs/libpip-riot.git
 PKG_VERSION = fc4ca208f45ebe7515b83273ea6254d56d593dd5
 PKG_LICENSE = CeCILL-2.1
 
