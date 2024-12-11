@@ -6,6 +6,7 @@
 # General Public License v2.1. See the file LICENSE in the top level
 # directory for more details.
 
+# Damien Amara <damien.amara@univ-lille.fr>
 
 """Symbols script"""
 
@@ -13,8 +14,20 @@
 import sys
 
 
-from elftools.elf.elffile import ELFFile
+from elftools.elf.elffile import ELFFile, ELFError
 from elftools.elf.sections import SymbolTableSection
+
+
+# The order of the symbols matter, as it reflects the
+# writing order in the symbols.bin file
+SYMBOLS = [
+    ( 'start'          , 'STT_FUNC'   ),
+    ( '__rom_size'     , 'STT_NOTYPE' ),
+    ( '__rom_ram_size' , 'STT_NOTYPE' ),
+    ( '__ram_size'     , 'STT_NOTYPE' ),
+    ( '__got_size'     , 'STT_NOTYPE' ),
+    ( '__rom_ram_end'  , 'STT_NOTYPE' )
+]
 
 
 def usage():
@@ -34,8 +47,35 @@ def to_word(x):
     return x.to_bytes(4, byteorder='little')
 
 
-def process_file(elf, symnames):
+def process_symbol(sh, symbol_name, symbol_type):
     """Parse the symbol table sections to extract the st_value"""
+    symbols = sh.get_symbol_by_name(symbol_name)
+    if not symbols:
+        die(f'.symtab: {symbol_name}: no symbol with this name')
+    global_symbol = None
+    if len(symbols) > 1:
+        for symbol in symbols:
+            if symbol['st_info']['bind'] == 'STB_GLOBAL':
+                if global_symbol is not None:
+                    die(f'.symtab: {symbol_name}: more than one '
+                        'global symbol with this name')
+                global_symbol = symbol
+        if global_symbol is None:
+            die(f'.symtab: {symbol_name}: no global symbol '
+                'exists with this name')
+    else:
+        symbol = symbols[0]
+        if symbol['st_info']['bind'] != 'STB_GLOBAL':
+            die(f'.symtab: {symbol_name}: not a global symbol')
+        global_symbol = symbol
+    if global_symbol['st_info']['type'] != symbol_type:
+        die(f'.symtab: {symbol_name}: expected {symbol_type} '
+            'symbol type')
+    return to_word(global_symbol.entry['st_value'])
+
+
+def process_symbols(elf, symbols):
+    """Process each symbol"""
     sh = elf.get_section_by_name('.symtab')
     if not sh:
         die(f'.symtab: no section with this name found')
@@ -44,30 +84,21 @@ def process_file(elf, symnames):
     if sh['sh_type'] != 'SHT_SYMTAB':
         die(f'.symtab: is not a SHT_SYMTAB section')
     xs = bytearray()
-    for symname in symnames:
-        symbols = sh.get_symbol_by_name(symname)
-        if not symbols:
-            die(f'.symtab: {symname}: no symbol with this name')
-        if len(symbols) > 1:
-            die(f'.symtab: {symname}: more than one symbol with this name')
-        xs += to_word(symbols[0].entry['st_value'])
+    for symbol in symbols:
+        xs += process_symbol(sh, symbol[0], symbol[1])
     return xs
 
 
 if __name__ == '__main__':
-    if len(sys.argv) >= 3:
+    try:
         with open(sys.argv[1], 'rb') as f:
-            xs = process_file(ELFFile(f), [
-                # The order of the symbols matter, as it reflects the
-                # writing order in the symbols.bin file
-                'start',
-                '__rom_size',
-                '__rom_ram_size',
-                '__ram_size',
-                '__got_size',
-                '__rom_ram_end',
-            ])
+            xs = process_symbols(ELFFile(f), SYMBOLS)
         with open(sys.argv[2], 'wb') as f:
             f.write(xs)
         sys.exit(0)
-    usage()
+    except FileNotFoundError as e:
+        die(f'{sys.argv[1]}: no such file or directory')
+    except ELFError as e:
+        die(f'{sys.argv[1]}: {str(e)}')
+    except IndexError:
+        usage()
