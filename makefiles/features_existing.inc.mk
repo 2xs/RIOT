@@ -66,6 +66,7 @@ FEATURES_EXISTING := \
     cpu_core_atmega \
     cpu_core_atxmega \
     cpu_core_cortexm \
+    cpu_core_cortexm_pip \
     cpu_efm32 \
     cpu_esp32 \
     cpu_esp8266 \
@@ -81,6 +82,7 @@ FEATURES_EXISTING := \
     cpu_native \
     cpu_nrf51 \
     cpu_nrf52 \
+    cpu_nrf52_pip \
     cpu_nrf53 \
     cpu_nrf9160 \
     cpu_qn908x \

@@ -13,7 +13,7 @@ else
   INCLUDES += $(NIMIBASE)/porting/npl/riot/include/npl_syscfg
   INCLUDES += -I$(RIOTPKG)/nimble/npl/include
 endif
-INCLUDES += $(NIMIBASE)/porting/nimble/include
+INCLUDES += $(NIMIBASE)/porting/nimble/$(CPU_FAM)/include
 
 # include nimble controller headers
 ifneq (,$(filter nimble_controller,$(USEMODULE)))

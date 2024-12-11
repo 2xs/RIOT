@@ -52,7 +52,7 @@
 #endif
 
 #ifdef MODULE_NIMBLE_CONTROLLER
-#if defined(CPU_FAM_NRF52) || defined(CPU_FAM_NRF51)
+#if defined(CPU_FAM_NRF52) || defined(CPU_FAM_NRF52_PIP) || defined(CPU_FAM_NRF51)
 #include "nrf_clock.h"
 #endif
 #include "controller/ble_ll.h"
@@ -78,7 +78,7 @@ static void *_host_thread(void *arg)
 
 #ifdef MODULE_NIMBLE_CONTROLLER
     /* XXX: NimBLE needs the nRF5x's LF clock to run */
-#if defined(CPU_FAM_NRF52) || defined(CPU_FAM_NRF51)
+#if defined(CPU_FAM_NRF52) || defined(CPU_FAM_NRF52_PIP) || defined(CPU_FAM_NRF51)
     clock_start_lf();
 #endif
 

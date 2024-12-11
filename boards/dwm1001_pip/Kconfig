@@ -1,0 +1,16 @@
+# Copyright (c) 2020 HAW Hamburg
+#
+# This file is subject to the terms and conditions of the GNU Lesser
+# General Public License v2.1. See the file LICENSE in the top level
+# directory for more details.
+
+config BOARD
+    default "dwm1001_pip" if BOARD_DWM1001_PIP
+
+config BOARD_DWM1001_PIP
+    bool
+    default y
+    select BOARD_COMMON_NRF52_PIP
+    select CPU_MODEL_NRF52832XXAA
+
+source "$(RIOTBOARD)/common/nrf52_pip/Kconfig"

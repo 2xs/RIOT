@@ -1586,6 +1586,7 @@ License
 
 All code files contain licensing information.
 
+
 RIOT-2024.01 - Release Notes
 ============================
 RIOT is a multi-threading operating system which enables soft real-time

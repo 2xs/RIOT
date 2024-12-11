@@ -1,0 +1,230 @@
+From bef75a1cb174435e003f79fa8cb0e5be5cb85caa Mon Sep 17 00:00:00 2001
+From: Damien Amara <damien.amara@univ-lille.fr>
+Date: Tue, 28 Feb 2023 09:06:07 +0100
+Subject: [PATCH 2/7] porting/nimble: move nRF52-specific files to a dedicated
+ directory
+
+These files are nRF52-specific, so they should be moved to a dedicated
+directory.
+---
+ porting/nimble/{ => nrf52}/Makefile.controller             | 0
+ porting/nimble/{ => nrf52}/Makefile.defs                   | 0
+ porting/nimble/{ => nrf52}/Makefile.mesh                   | 0
+ porting/nimble/{ => nrf52}/Makefile.tinycrypt              | 0
+ porting/nimble/{ => nrf52}/include/hal/hal_system.h        | 0
+ porting/nimble/{ => nrf52}/include/hal/hal_timer.h         | 0
+ porting/nimble/{ => nrf52}/include/log/log.h               | 0
+ porting/nimble/{ => nrf52}/include/log_common/ignore.h     | 0
+ porting/nimble/{ => nrf52}/include/log_common/log_common.h | 0
+ porting/nimble/{ => nrf52}/include/logcfg/logcfg.h         | 0
+ porting/nimble/{ => nrf52}/include/mem/mem.h               | 0
+ porting/nimble/{ => nrf52}/include/modlog/modlog.h         | 0
+ porting/nimble/{ => nrf52}/include/nimble/nimble_port.h    | 0
+ porting/nimble/{ => nrf52}/include/os/endian.h             | 0
+ porting/nimble/{ => nrf52}/include/os/os.h                 | 0
+ porting/nimble/{ => nrf52}/include/os/os_cputime.h         | 0
+ porting/nimble/{ => nrf52}/include/os/os_error.h           | 0
+ porting/nimble/{ => nrf52}/include/os/os_mbuf.h            | 0
+ porting/nimble/{ => nrf52}/include/os/os_mempool.h         | 0
+ porting/nimble/{ => nrf52}/include/os/os_trace_api.h       | 0
+ porting/nimble/{ => nrf52}/include/os/queue.h              | 0
+ porting/nimble/{ => nrf52}/include/os/util.h               | 0
+ porting/nimble/{ => nrf52}/include/stats/stats.h           | 0
+ porting/nimble/{ => nrf52}/include/syscfg/syscfg.h         | 0
+ porting/nimble/{ => nrf52}/include/sysflash/sysflash.h     | 0
+ porting/nimble/{ => nrf52}/include/sysinit/sysinit.h       | 0
+ porting/nimble/{ => nrf52}/pkg.yml                         | 0
+ porting/nimble/{ => nrf52}/src/endian.c                    | 0
+ porting/nimble/{ => nrf52}/src/hal_timer.c                 | 0
+ porting/nimble/{ => nrf52}/src/mem.c                       | 0
+ porting/nimble/{ => nrf52}/src/nimble_port.c               | 0
+ porting/nimble/{ => nrf52}/src/os_cputime.c                | 0
+ porting/nimble/{ => nrf52}/src/os_cputime_pwr2.c           | 0
+ porting/nimble/{ => nrf52}/src/os_mbuf.c                   | 0
+ porting/nimble/{ => nrf52}/src/os_mempool.c                | 0
+ porting/nimble/{ => nrf52}/src/os_msys_init.c              | 0
+ 36 files changed, 0 insertions(+), 0 deletions(-)
+ rename porting/nimble/{ => nrf52}/Makefile.controller (100%)
+ rename porting/nimble/{ => nrf52}/Makefile.defs (100%)
+ rename porting/nimble/{ => nrf52}/Makefile.mesh (100%)
+ rename porting/nimble/{ => nrf52}/Makefile.tinycrypt (100%)
+ rename porting/nimble/{ => nrf52}/include/hal/hal_system.h (100%)
+ rename porting/nimble/{ => nrf52}/include/hal/hal_timer.h (100%)
+ rename porting/nimble/{ => nrf52}/include/log/log.h (100%)
+ rename porting/nimble/{ => nrf52}/include/log_common/ignore.h (100%)
+ rename porting/nimble/{ => nrf52}/include/log_common/log_common.h (100%)
+ rename porting/nimble/{ => nrf52}/include/logcfg/logcfg.h (100%)
+ rename porting/nimble/{ => nrf52}/include/mem/mem.h (100%)
+ rename porting/nimble/{ => nrf52}/include/modlog/modlog.h (100%)
+ rename porting/nimble/{ => nrf52}/include/nimble/nimble_port.h (100%)
+ rename porting/nimble/{ => nrf52}/include/os/endian.h (100%)
+ rename porting/nimble/{ => nrf52}/include/os/os.h (100%)
+ rename porting/nimble/{ => nrf52}/include/os/os_cputime.h (100%)
+ rename porting/nimble/{ => nrf52}/include/os/os_error.h (100%)
+ rename porting/nimble/{ => nrf52}/include/os/os_mbuf.h (100%)
+ rename porting/nimble/{ => nrf52}/include/os/os_mempool.h (100%)
+ rename porting/nimble/{ => nrf52}/include/os/os_trace_api.h (100%)
+ rename porting/nimble/{ => nrf52}/include/os/queue.h (100%)
+ rename porting/nimble/{ => nrf52}/include/os/util.h (100%)
+ rename porting/nimble/{ => nrf52}/include/stats/stats.h (100%)
+ rename porting/nimble/{ => nrf52}/include/syscfg/syscfg.h (100%)
+ rename porting/nimble/{ => nrf52}/include/sysflash/sysflash.h (100%)
+ rename porting/nimble/{ => nrf52}/include/sysinit/sysinit.h (100%)
+ rename porting/nimble/{ => nrf52}/pkg.yml (100%)
+ rename porting/nimble/{ => nrf52}/src/endian.c (100%)
+ rename porting/nimble/{ => nrf52}/src/hal_timer.c (100%)
+ rename porting/nimble/{ => nrf52}/src/mem.c (100%)
+ rename porting/nimble/{ => nrf52}/src/nimble_port.c (100%)
+ rename porting/nimble/{ => nrf52}/src/os_cputime.c (100%)
+ rename porting/nimble/{ => nrf52}/src/os_cputime_pwr2.c (100%)
+ rename porting/nimble/{ => nrf52}/src/os_mbuf.c (100%)
+ rename porting/nimble/{ => nrf52}/src/os_mempool.c (100%)
+ rename porting/nimble/{ => nrf52}/src/os_msys_init.c (100%)
+
+diff --git a/porting/nimble/Makefile.controller b/porting/nimble/nrf52/Makefile.controller
+similarity index 100%
+rename from porting/nimble/Makefile.controller
+rename to porting/nimble/nrf52/Makefile.controller
+diff --git a/porting/nimble/Makefile.defs b/porting/nimble/nrf52/Makefile.defs
+similarity index 100%
+rename from porting/nimble/Makefile.defs
+rename to porting/nimble/nrf52/Makefile.defs
+diff --git a/porting/nimble/Makefile.mesh b/porting/nimble/nrf52/Makefile.mesh
+similarity index 100%
+rename from porting/nimble/Makefile.mesh
+rename to porting/nimble/nrf52/Makefile.mesh
+diff --git a/porting/nimble/Makefile.tinycrypt b/porting/nimble/nrf52/Makefile.tinycrypt
+similarity index 100%
+rename from porting/nimble/Makefile.tinycrypt
+rename to porting/nimble/nrf52/Makefile.tinycrypt
+diff --git a/porting/nimble/include/hal/hal_system.h b/porting/nimble/nrf52/include/hal/hal_system.h
+similarity index 100%
+rename from porting/nimble/include/hal/hal_system.h
+rename to porting/nimble/nrf52/include/hal/hal_system.h
+diff --git a/porting/nimble/include/hal/hal_timer.h b/porting/nimble/nrf52/include/hal/hal_timer.h
+similarity index 100%
+rename from porting/nimble/include/hal/hal_timer.h
+rename to porting/nimble/nrf52/include/hal/hal_timer.h
+diff --git a/porting/nimble/include/log/log.h b/porting/nimble/nrf52/include/log/log.h
+similarity index 100%
+rename from porting/nimble/include/log/log.h
+rename to porting/nimble/nrf52/include/log/log.h
+diff --git a/porting/nimble/include/log_common/ignore.h b/porting/nimble/nrf52/include/log_common/ignore.h
+similarity index 100%
+rename from porting/nimble/include/log_common/ignore.h
+rename to porting/nimble/nrf52/include/log_common/ignore.h
+diff --git a/porting/nimble/include/log_common/log_common.h b/porting/nimble/nrf52/include/log_common/log_common.h
+similarity index 100%
+rename from porting/nimble/include/log_common/log_common.h
+rename to porting/nimble/nrf52/include/log_common/log_common.h
+diff --git a/porting/nimble/include/logcfg/logcfg.h b/porting/nimble/nrf52/include/logcfg/logcfg.h
+similarity index 100%
+rename from porting/nimble/include/logcfg/logcfg.h
+rename to porting/nimble/nrf52/include/logcfg/logcfg.h
+diff --git a/porting/nimble/include/mem/mem.h b/porting/nimble/nrf52/include/mem/mem.h
+similarity index 100%
+rename from porting/nimble/include/mem/mem.h
+rename to porting/nimble/nrf52/include/mem/mem.h
+diff --git a/porting/nimble/include/modlog/modlog.h b/porting/nimble/nrf52/include/modlog/modlog.h
+similarity index 100%
+rename from porting/nimble/include/modlog/modlog.h
+rename to porting/nimble/nrf52/include/modlog/modlog.h
+diff --git a/porting/nimble/include/nimble/nimble_port.h b/porting/nimble/nrf52/include/nimble/nimble_port.h
+similarity index 100%
+rename from porting/nimble/include/nimble/nimble_port.h
+rename to porting/nimble/nrf52/include/nimble/nimble_port.h
+diff --git a/porting/nimble/include/os/endian.h b/porting/nimble/nrf52/include/os/endian.h
+similarity index 100%
+rename from porting/nimble/include/os/endian.h
+rename to porting/nimble/nrf52/include/os/endian.h
+diff --git a/porting/nimble/include/os/os.h b/porting/nimble/nrf52/include/os/os.h
+similarity index 100%
+rename from porting/nimble/include/os/os.h
+rename to porting/nimble/nrf52/include/os/os.h
+diff --git a/porting/nimble/include/os/os_cputime.h b/porting/nimble/nrf52/include/os/os_cputime.h
+similarity index 100%
+rename from porting/nimble/include/os/os_cputime.h
+rename to porting/nimble/nrf52/include/os/os_cputime.h
+diff --git a/porting/nimble/include/os/os_error.h b/porting/nimble/nrf52/include/os/os_error.h
+similarity index 100%
+rename from porting/nimble/include/os/os_error.h
+rename to porting/nimble/nrf52/include/os/os_error.h
+diff --git a/porting/nimble/include/os/os_mbuf.h b/porting/nimble/nrf52/include/os/os_mbuf.h
+similarity index 100%
+rename from porting/nimble/include/os/os_mbuf.h
+rename to porting/nimble/nrf52/include/os/os_mbuf.h
+diff --git a/porting/nimble/include/os/os_mempool.h b/porting/nimble/nrf52/include/os/os_mempool.h
+similarity index 100%
+rename from porting/nimble/include/os/os_mempool.h
+rename to porting/nimble/nrf52/include/os/os_mempool.h
+diff --git a/porting/nimble/include/os/os_trace_api.h b/porting/nimble/nrf52/include/os/os_trace_api.h
+similarity index 100%
+rename from porting/nimble/include/os/os_trace_api.h
+rename to porting/nimble/nrf52/include/os/os_trace_api.h
+diff --git a/porting/nimble/include/os/queue.h b/porting/nimble/nrf52/include/os/queue.h
+similarity index 100%
+rename from porting/nimble/include/os/queue.h
+rename to porting/nimble/nrf52/include/os/queue.h
+diff --git a/porting/nimble/include/os/util.h b/porting/nimble/nrf52/include/os/util.h
+similarity index 100%
+rename from porting/nimble/include/os/util.h
+rename to porting/nimble/nrf52/include/os/util.h
+diff --git a/porting/nimble/include/stats/stats.h b/porting/nimble/nrf52/include/stats/stats.h
+similarity index 100%
+rename from porting/nimble/include/stats/stats.h
+rename to porting/nimble/nrf52/include/stats/stats.h
+diff --git a/porting/nimble/include/syscfg/syscfg.h b/porting/nimble/nrf52/include/syscfg/syscfg.h
+similarity index 100%
+rename from porting/nimble/include/syscfg/syscfg.h
+rename to porting/nimble/nrf52/include/syscfg/syscfg.h
+diff --git a/porting/nimble/include/sysflash/sysflash.h b/porting/nimble/nrf52/include/sysflash/sysflash.h
+similarity index 100%
+rename from porting/nimble/include/sysflash/sysflash.h
+rename to porting/nimble/nrf52/include/sysflash/sysflash.h
+diff --git a/porting/nimble/include/sysinit/sysinit.h b/porting/nimble/nrf52/include/sysinit/sysinit.h
+similarity index 100%
+rename from porting/nimble/include/sysinit/sysinit.h
+rename to porting/nimble/nrf52/include/sysinit/sysinit.h
+diff --git a/porting/nimble/pkg.yml b/porting/nimble/nrf52/pkg.yml
+similarity index 100%
+rename from porting/nimble/pkg.yml
+rename to porting/nimble/nrf52/pkg.yml
+diff --git a/porting/nimble/src/endian.c b/porting/nimble/nrf52/src/endian.c
+similarity index 100%
+rename from porting/nimble/src/endian.c
+rename to porting/nimble/nrf52/src/endian.c
+diff --git a/porting/nimble/src/hal_timer.c b/porting/nimble/nrf52/src/hal_timer.c
+similarity index 100%
+rename from porting/nimble/src/hal_timer.c
+rename to porting/nimble/nrf52/src/hal_timer.c
+diff --git a/porting/nimble/src/mem.c b/porting/nimble/nrf52/src/mem.c
+similarity index 100%
+rename from porting/nimble/src/mem.c
+rename to porting/nimble/nrf52/src/mem.c
+diff --git a/porting/nimble/src/nimble_port.c b/porting/nimble/nrf52/src/nimble_port.c
+similarity index 100%
+rename from porting/nimble/src/nimble_port.c
+rename to porting/nimble/nrf52/src/nimble_port.c
+diff --git a/porting/nimble/src/os_cputime.c b/porting/nimble/nrf52/src/os_cputime.c
+similarity index 100%
+rename from porting/nimble/src/os_cputime.c
+rename to porting/nimble/nrf52/src/os_cputime.c
+diff --git a/porting/nimble/src/os_cputime_pwr2.c b/porting/nimble/nrf52/src/os_cputime_pwr2.c
+similarity index 100%
+rename from porting/nimble/src/os_cputime_pwr2.c
+rename to porting/nimble/nrf52/src/os_cputime_pwr2.c
+diff --git a/porting/nimble/src/os_mbuf.c b/porting/nimble/nrf52/src/os_mbuf.c
+similarity index 100%
+rename from porting/nimble/src/os_mbuf.c
+rename to porting/nimble/nrf52/src/os_mbuf.c
+diff --git a/porting/nimble/src/os_mempool.c b/porting/nimble/nrf52/src/os_mempool.c
+similarity index 100%
+rename from porting/nimble/src/os_mempool.c
+rename to porting/nimble/nrf52/src/os_mempool.c
+diff --git a/porting/nimble/src/os_msys_init.c b/porting/nimble/nrf52/src/os_msys_init.c
+similarity index 100%
+rename from porting/nimble/src/os_msys_init.c
+rename to porting/nimble/nrf52/src/os_msys_init.c
+-- 
+2.20.1
+

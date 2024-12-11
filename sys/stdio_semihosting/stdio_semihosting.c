@@ -87,7 +87,7 @@ static uint32_t _semihosting_raw(int cmd, uint32_t *args)
     return result;
 }
 
-#elif defined(MODULE_CORTEXM_COMMON)
+#elif defined(MODULE_CORTEXM_COMMON) || defined(MODULE_CORTEXM_COMMON_PIP)
 
 static uint32_t _semihosting_raw(int cmd, uint32_t *args)
 {

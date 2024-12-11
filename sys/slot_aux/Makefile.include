@@ -6,8 +6,11 @@
 SLOT_AUX_LEN ?= 0
 SLOT_AUX_OFFSET ?= $(shell echo $$(($(ROM_LEN:%K=%*1024)-$(SLOT_AUX_LEN))))
 
+# Not needed for the port of RIOT over Pip-MPU
+ifneq ($(patsubst %_pip,,$(lastword $(CPU_FAM))),)
 LINKFLAGS += $(LINKFLAGPREFIX)--defsym=_slot_aux_offset=$(SLOT_AUX_OFFSET)
 LINKFLAGS += $(LINKFLAGPREFIX)--defsym=_slot_aux_len=$(SLOT_AUX_LEN)
+endif
 
 ifneq (0, $(SLOT_AUX_LEN))
   CFLAGS += -DCONFIG_SLOT_AUX_OFFSET=$(SLOT_AUX_OFFSET)
