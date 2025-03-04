@@ -1,5 +1,6 @@
 PKG_NAME    = newlib_nano_pip
-PKG_URL     = https://sourceware.org/git/newlib-cygwin.git
+#PKG_URL     = https://sourceware.org/git/newlib-cygwin.git
+PKG_URL     = https://github.com/mirror/newlib-cygwin.git
 PKG_VERSION = 415fdd4279b85eeec9d54775ce13c5c412451e08
 PKG_LICENSE = MIT/BSD
 

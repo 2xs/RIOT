@@ -603,6 +603,8 @@ PSEUDOMODULES += crypto_aes_unroll
 PSEUDOMODULES += test_utils_interactive_sync_shell
 PSEUDOMODULES += test_utils_main_exit_cb
 
+PSEUDOMODULES += shell_cmds_xipfs
+
 # All auto_init modules are pseudomodules
 PSEUDOMODULES += auto_init_%
 NO_PSEUDOMODULES += auto_init_can

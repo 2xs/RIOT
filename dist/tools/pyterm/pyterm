@@ -38,8 +38,9 @@ import argparse
 import re
 import codecs
 import platform
-
-from subprocess import Popen, PIPE
+import pathlib
+import base64
+import uuid
 
 try:
     serial.Serial
@@ -77,7 +78,8 @@ defaulthostname = platform.node()
 defaultport = "/dev/ttyUSB0"
 
 # default baudrate for serial connection
-defaultbaud = 115200
+defaultbaud = 9600
+#115200
 
 # directory to store configuration and log files
 defaultdir = os.environ['HOME'] + os.path.sep + '.pyterm'
@@ -101,6 +103,61 @@ defaultprompt = '>'
 defaultrepeat_cmd_empty_line = True
 defaultreconnect = True
 
+# riot's default shell buffer size
+# see sys/include/shell.h file
+SHELL_DEFAULT_BUFSIZE = 128 - 1
+
+
+def trunc(x, y):
+    return ((x) & ~((y) - 1))
+
+
+def run(self, filename):
+    try:
+        with open(filename, 'r') as f:
+            cmds = f.read()
+            if cmds[-1] == '\n':
+                cmds = cmds.split('\n')[:-1]
+            else:
+                cmds = cmds.split('\n')
+            for cmd in cmds:
+                cmd = cmd.strip()
+                if sys.version_info[0] == 2:
+                    self.ser.write((cmd + "\n").decode("utf-8").encode("utf-8"))
+                else:
+                    # workaround...
+                    for i in cmd:
+                        self.ser.write(i.encode("utf-8"))
+                        time.sleep(0.01)
+                    self.ser.write("\n".encode("utf-8"))
+                    time.sleep(0.01)
+    except FileNotFoundError:
+        print(f'run: {filename}: no such file')
+
+
+def put(self, filename):
+    global SHELL_DEFAULT_BUFSIZE
+    if len(filename) >= 32:
+        return
+    chksz = trunc(SHELL_DEFAULT_BUFSIZE - len(f'ldbin {filename} '), 4)
+    try:
+        with open(filename, 'rb') as f:
+            binstr = f.read()
+            flashsz = len(binstr)
+            b64str = base64.b64encode(binstr).decode('ascii')
+    except FileNotFoundError:
+        print(f'put: {filename}: no such file')
+        return
+    script = f'/tmp/{str(uuid.uuid4())}'
+    with open(script, 'w') as f:
+        if pathlib.Path(filename).suffix == '.bin':
+            f.write(f'mkbin {filename} {flashsz} 1\n')
+        else:
+            f.write(f'mkbin {filename} {flashsz} 0\n')
+        for chunk in [b64str[i:i+chksz] for i in range(0,len(b64str),chksz)]:
+            f.write(f'ldbin {filename} {chunk}\n')
+    run(self, script)
+
 
 class SerCmd(cmd.Cmd):
     """Main class for pyterm based on Python's Cmd class.
@@ -109,11 +166,10 @@ class SerCmd(cmd.Cmd):
     port.
     """
 
-    def __init__(self, port=None, baudrate=None, toggle=None,
-                 tcp_serial=None, process=None, process_args=None,
+    def __init__(self, port=None, baudrate=None, toggle=None, tcp_serial=None,
                  confdir=None, conffile=None, host=None, run_name=None,
-                 log_dir_name=None, newline=None, formatter=None, set_rts=None,
-                 set_dtr=None, serprompt=None,
+                 log_dir_name=None, newline=None, formatter=None,
+                 set_rts=None, set_dtr=None, serprompt=None,
                  repeat_command_on_empty_line=defaultrepeat_cmd_empty_line,
                  reconnect=defaultreconnect):
         """Constructor.
@@ -121,9 +177,7 @@ class SerCmd(cmd.Cmd):
         Args:
             port (str):         serial port
             baudrate (int):     serial baudrate
-            tcp_serial (iht):   TCP port to connect to (alterprocessly)
-            process (str):      Program to run as subprocess and connect to its I/O
-            process_args (str): Optional arguments for the subprocess
+            tcp_serial (iht):   TCP port to connect to (alternatively)
             confdir (str):      configuration directory
             conffile (str):     configuration file name
             host (str):         local host name
@@ -139,14 +193,6 @@ class SerCmd(cmd.Cmd):
         self.set_rts = set_rts
         self.set_dtr = set_dtr
         self.tcp_serial = tcp_serial
-        self.process = process
-        self.process_args = []
-        if process_args:
-            for arg in process_args:
-                for elem in arg:
-                    for substr in elem.split(' '):
-                        substr = substr.replace('\\-\\-', '--')
-                        self.process_args.append(substr)
         self.configdir = confdir
         self.configfile = conffile
         self.host = host
@@ -166,7 +212,7 @@ class SerCmd(cmd.Cmd):
             self.run_name = defaultrunname
 
         if not self.log_dir_name:
-            self.log_dir_name = self.configdir + os.path.sep + self.host
+            self.log_dir_name = self.host
 
         if not os.path.exists(self.configdir):
             os.makedirs(self.configdir)
@@ -196,7 +242,7 @@ class SerCmd(cmd.Cmd):
         # create formatter
         formatter = logging.Formatter(self.fmt_str)
 
-        directory = self.log_dir_name
+        directory = self.configdir + os.path.sep + self.log_dir_name
         if not os.path.exists(directory):
             os.makedirs(directory)
         logging.basicConfig(filename=directory + os.path.sep + self.run_name +
@@ -217,11 +263,6 @@ class SerCmd(cmd.Cmd):
         """Executed bat program start.
         """
 
-        if self.process and (self.port != defaultport or self.tcp_serial):
-            self.logger.error("Specified a process instance AND a serial "
-                              "port or TCP connection. You probably want "
-                              "to specify only the one or the other.")
-            sys.exit(1)
         # if no serial or TCP is specified use default serial port
         if not self.port and not self.tcp_serial:
             sys.stderr.write("No port specified, using default (%s)!\n"
@@ -271,10 +312,6 @@ class SerCmd(cmd.Cmd):
                 self.logger.error("Something went wrong connecting to "
                                   "localhost:%s" % self.tcp_serial)
                 sys.exit(1)
-        elif self.process:
-            process_call = [self.process] + self.process_args
-            self.logger.debug("Executing process as %s", str(process_call))
-            self.ser = Popen(process_call, stdout=PIPE, stdin=PIPE, stderr=PIPE)
         # otherwise go for the serial port
         elif self.port:
             connected = False
@@ -303,6 +340,7 @@ class SerCmd(cmd.Cmd):
         # commands to the node
         time.sleep(1)
         for command in self.init_cmd:
+            self.logger.debug("WRITE ----->>>>>> '" + command + "'\n")
             self.onecmd(self.precmd(command))
 
         # start serial->console thread
@@ -335,17 +373,32 @@ class SerCmd(cmd.Cmd):
         self.logger.debug("%s is no pyterm command, sending to default "
                           "out" % line)
         for tok in line.split(';'):
-            tok = self.get_alias(tok)
-            if sys.version_info[0] == 2:
-                self._write_char((tok.strip() + "\n").decode("utf-8").encode("utf-8"))
+            tok = self.get_alias(tok).strip()
+            # Special commands
+            if tok.startswith('put'):
+                argv = tok.split(' ')
+                if len(argv) == 2:
+                    put(self, argv[1])
+            elif tok.startswith('run'):
+                argv = tok.split(' ')
+                if len(argv) == 2:
+                    run(self, argv[1])
             else:
-                self._write_char((tok.strip() + "\n").encode("utf-8"))
+                if sys.version_info[0] == 2:
+                    self.ser.write((tok + "\n").decode("utf-8").encode("utf-8"))
+                else:
+                    # workaround...
+                    for i in tok:
+                        self.ser.write(i.encode("utf-8"))
+                        time.sleep(0.005)
+                    self.ser.write("\n".encode("utf-8"))
+                    time.sleep(0.005)
 
     def do_help(self, line):
         """Do not use Cmd's internal help function, but redirect to the
         node.
         """
-        self._write_char("help\n".encode("utf-8"))
+        self.ser.write("help\n".encode("utf-8"))
 
     def do_EOF(self, line):
         """Handle EOF (Ctrl+D) nicely."""
@@ -675,7 +728,7 @@ class SerCmd(cmd.Cmd):
                 self.process_line(line)
 
     def serial_connect(self):
-        self.ser = serial.Serial(port=self.port, dsrdtr=0, rtscts=0, exclusive=1)
+        self.ser = serial.Serial(port=self.port, dsrdtr=0, rtscts=0)
         self.ser.baudrate = self.baudrate
 
         if self.toggle:
@@ -689,21 +742,10 @@ class SerCmd(cmd.Cmd):
             self.ser.setDTR(self.set_dtr)
 
     def _read_char(self):
-        output_stream = self.ser
-        if self.process:
-            output_stream = self.ser.stdout
         # check if serial port can be accessed.
-        sr = codecs.getreader("UTF-8")(output_stream,
+        sr = codecs.getreader("UTF-8")(self.ser,
                                        errors='replace')
         return sr.read(1)
-
-    def _write_char(self, output):
-        input_stream = self.ser
-        if self.process:
-            input_stream = self.ser.stdin
-        input_stream.write(output)
-        if self.process:
-            input_stream.flush()
 
     def _handle_serial_exception(self):
         self.logger.warning("Serial port disconnected, waiting to "
@@ -790,7 +832,7 @@ class PytermProt(Protocol):
         if(data.strip() == "/exit"):
             reactor.callLater(2, self.factory.shell.do_PYTERM_exit, data)
         else:
-            self.factory.shell._write_char(data + "\n")
+            self.factory.shell.ser.write(data + "\n")
 
     def sendMessage(self, msg):
         self.transport.writeSomeData("%d#%s\n" % (len(msg), msg))
@@ -847,12 +889,6 @@ if __name__ == "__main__":
                         help="Connect to a TCP port instead of a serial port. "
                         "Format is <hostname>:<port>. If the colon is missing"
                         " host defaults to \"localhost\"")
-    parser.add_argument("-ps", "--process",
-                        help="Start a subprocess and connect pyterm to its "
-                        "stdio.")
-    parser.add_argument("-pa", "--process-args",
-                        help="Adding optional arguments to subprocess",
-                        action="append", nargs='*')
     parser.add_argument("-b", "--baudrate",
                         help="Specifies baudrate for the serial port, default "
                         "is %s" % defaultbaud,
@@ -929,7 +965,6 @@ if __name__ == "__main__":
                         action="store_false",
                         help="Do not try to reconnect when failing on "
                              "connection setup (Default)")
-
     parser.set_defaults(
         repeat_command_on_empty_line=defaultrepeat_cmd_empty_line,
         reconnect=defaultreconnect)
@@ -939,10 +974,10 @@ if __name__ == "__main__":
     if args.noprefix:
         args.format = ""
     myshell = SerCmd(args.port, args.baudrate, args.toggle, args.tcp_serial,
-                     args.process, args.process_args, args.directory,
-                     args.config, args.host, args.run_name, args.log_dir_name,
-                     args.newline, args.format, args.set_rts, args.set_dtr,
-                     args.prompt, args.repeat_command_on_empty_line)
+                     args.directory, args.config, args.host, args.run_name,
+                     args.log_dir_name, args.newline, args.format,
+                     args.set_rts, args.set_dtr, args.prompt,
+                     args.repeat_command_on_empty_line)
     myshell.prompt = ''
 
     try:

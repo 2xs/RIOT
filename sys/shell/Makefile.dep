@@ -122,6 +122,33 @@ ifneq (,$(filter shell_cmds_default,$(USEMODULE)))
   endif
 endif
 
+ifneq (,$(filter shell_cmds_xipfs,$(USEMODULE)))
+  USEMODULE += gnrc_xipfs
+  ##USEMODULE += shell_cmd_bgbin
+  #USEMODULE += cat
+  #USEMODULE += shell_cmd_cp
+  #USEMODULE += shell_cmd_df
+  #USEMODULE += shell_cmd_exec
+  #USEMODULE += shell_cmd_fmtbin
+  #USEMODULE += shell_cmd_hexdump
+  #USEMODULE += shell_cmd_ldbin
+  #USEMODULE += shell_cmd_ls
+  #USEMODULE += shell_cmd_mkbin
+  #USEMODULE += shell_cmd_put
+  #USEMODULE += shell_cmd_rm
+  #USEMODULE += shell_cmd_run
+  #USEMODULE += shell_cmd_safe_exec
+endif
+
+ifneq (,$(filter shell_cmd_%,$(USEMODULE)))
+  # each and every command is a submodule of shell_cmds
+  USEMODULE += shell_cmds
+endif
+
+ifneq (,$(filter gnrc_xipfs,$(USEMODULE)))
+  include $(RIOTBASE)/sys/gnrc_xipfs/Makefile.dep
+endif
+
 ifneq (,$(filter shell_cmd_app_metadata,$(USEMODULE)))
   USEMODULE += app_metadata
 endif
