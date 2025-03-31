@@ -1,0 +1,2 @@
+# include common configuration for nrf52_pip based boards
+include $(RIOTBOARD)/common/nrf52_pip/Makefile.include
