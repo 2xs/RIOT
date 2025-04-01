@@ -1,0 +1,8 @@
+LIBRARYBASE   = $(PKGDIRBASE)/newlib_nano_pip
+CONFIGUREDIR  = $(LIBRARYBASE)/build
+TARGETDIR     = $(shell $(CC) -dumpmachine)
+MULTILIBDIR   = $(shell $(CC) $(CFLAGS) -print-multi-directory)
+LIBRARYINCDIR = $(CONFIGUREDIR)/$(TARGETDIR)/$(MULTILIBDIR)/newlib
+
+# include newlib_nano_pip headers
+INCLUDES += -isystem $(LIBRARYINCDIR)

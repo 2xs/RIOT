@@ -30,6 +30,7 @@ QUIET ?= 1
 # Modules to include:
 USEMODULE += shell
 USEMODULE += shell_cmds_default
+USEMODULE += shell_cmds_xipfs
 USEMODULE += ps
 # include and auto-initialize all available sensors
 USEMODULE += saul_default

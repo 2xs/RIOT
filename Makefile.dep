@@ -81,6 +81,14 @@ ifneq (,$(filter nimble_%,$(USEMODULE)))
   USEPKG += nimble
 endif
 
+ifneq (,$(filter newlib_nano_pip,$(DEFAULT_MODULE)))
+  USEPKG += newlib_nano_pip
+endif
+
+ifneq (,$(filter libpip,$(USEMODULE)))
+  USEPKG += libpip
+endif
+
 ifneq (,$(filter tlsf-malloc,$(USEMODULE)))
   USEPKG += tlsf
 endif

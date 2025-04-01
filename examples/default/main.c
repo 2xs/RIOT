@@ -25,7 +25,42 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef MODULE_GNRC_XIPFS
+
 #include "shell.h"
+
+#include "cat.h"
+#include "cp.h"
+#include "exec.h"
+#include "fmtbin.h"
+#include "hexdump.h"
+#include "ldbin.h"
+#include "ls.h"
+#include "mkbin.h"
+#include "put.h"
+#include "run.h"
+#include "safe_exec.h"
+
+static shell_command_t shell_commands[] = {
+    {"cat"      , "print files on the standard output"        , _cat_callback      },
+    {"cp"       , "copy files"                                , _cp_callback       },
+    {"exec"     , "run a binary in the foreground"            , _exec_callback     },
+    {"fmtbin"   , "format the file system"                    , _fmtbin_callback   },
+    {"hexdump"  , "ascii and hexadecimal dump"                , _hexdump_callback  },
+    {"ldbin"    , "load a chunk of machine code"              , _ldbin_callback    },
+    {"ls"       , "list files"                                , _ls_callback       },
+    {"mkbin"    , "allocate the space needed to load a binary", _mkbin_callback    },
+    {"put"      , "copy a file from the host to the board"    , _put_callback      },
+    {"run"      , "run a script from the host to the board"   , _run_callback      },
+    {"safe_exec", "run a binary safely in the foreground"     , _safe_exec_callback},
+    {NULL, NULL, NULL},
+};
+
+#else // MODULE_GNRC_XIPFS
+
+#define shell_commands NULL
+
+#endif // MODULE_GNRC_XIPFS
 
 #ifdef MODULE_NETIF
 #include "net/gnrc/pktdump.h"
@@ -43,7 +78,7 @@ int main(void)
     (void) puts("Welcome to RIOT!");
 
     char line_buf[SHELL_DEFAULT_BUFSIZE];
-    shell_run(NULL, line_buf, SHELL_DEFAULT_BUFSIZE);
+    shell_run(shell_commands, line_buf, SHELL_DEFAULT_BUFSIZE);
 
     return 0;
 }

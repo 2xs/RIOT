@@ -25,7 +25,7 @@
 #include "os/os.h"
 #include "mcu/mcu.h"
 
-#if defined(CPU_FAM_NRF51) || defined(CPU_FAM_NRF52)
+#if defined(CPU_FAM_NRF51) || defined(CPU_FAM_NRF52) || defined(CPU_FAM_NRF52_PIP)
 #include "nrf_clock.h"
 #endif
 
@@ -570,7 +570,7 @@ static inline void ble_npl_hw_set_isr(int irqn, void (*addr)(void))
 
 /* XXX: these functions are required to build hal_timer.c, however with the
 *       default configuration they are never used... */
-#if defined(CPU_FAM_NRF51) || defined(CPU_FAM_NRF52)
+#if defined(CPU_FAM_NRF51) || defined(CPU_FAM_NRF52) || defined(CPU_FAM_NRF52_PIP)
 static inline void
 nrf52_clock_hfxo_request(void)
 {
