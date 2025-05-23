@@ -525,7 +525,6 @@ ssize_t coap_handle_req(coap_pkt_t *pkt, uint8_t *resp_buf, unsigned resp_buf_le
 
     ssize_t retval = coap_tree_handler(pkt, resp_buf, resp_buf_len, ctx,
                                        coap_resources, coap_resources_numof);
-
     if (retval < 0) {
         if (retval == -ECANCELED) {
             DEBUG_PUTS("nanocoap: No-Response Option present and matching");

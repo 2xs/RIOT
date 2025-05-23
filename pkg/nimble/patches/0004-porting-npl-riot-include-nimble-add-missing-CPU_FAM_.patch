@@ -1,0 +1,36 @@
+From 3d056e7a60caa4e5d8253597b9037c0a0bf6e4d8 Mon Sep 17 00:00:00 2001
+From: Damien Amara <damien.amara@univ-lille.fr>
+Date: Tue, 7 Mar 2023 13:54:43 +0100
+Subject: [PATCH 4/7] porting/npl/riot/include/nimble: add missing
+ CPU_FAM_NRF52_PIP defines
+
+Add missing CPU_FAM_NRF52_PIP defines for the nrf52_pip architecture.
+---
+ porting/npl/riot/include/nimble/nimble_npl_os.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/porting/npl/riot/include/nimble/nimble_npl_os.h b/porting/npl/riot/include/nimble/nimble_npl_os.h
+index 4633cbd1..927c5377 100644
+--- a/porting/npl/riot/include/nimble/nimble_npl_os.h
++++ b/porting/npl/riot/include/nimble/nimble_npl_os.h
+@@ -27,7 +27,7 @@
+ #include "sema.h"
+ #include "ztimer.h"
+ 
+-#if defined(CPU_FAM_NRF51) || defined(CPU_FAM_NRF52)
++#if defined(CPU_FAM_NRF51) || defined(CPU_FAM_NRF52) || defined(CPU_FAM_NRF52_PIP)
+ #include "nrf_clock.h"
+ #endif
+ 
+@@ -276,7 +276,7 @@ ble_npl_hw_is_in_critical(void)
+ 
+ /* XXX: these functions are required to build hal_timer.c, however with the
+ *       default configuration they are never used... */
+-#if defined(CPU_FAM_NRF51) || defined(CPU_FAM_NRF52)
++#if defined(CPU_FAM_NRF51) || defined(CPU_FAM_NRF52) || defined(CPU_FAM_NRF52_PIP)
+ static inline void
+ nrf52_clock_hfxo_request(void)
+ {
+-- 
+2.20.1
+

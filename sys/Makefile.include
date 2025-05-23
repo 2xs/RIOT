@@ -90,6 +90,10 @@ ifneq (,$(filter newlib,$(USEMODULE)))
   include $(RIOTMAKE)/libc/newlib.mk
 endif
 
+ifneq (,$(filter newlib_nano_pip,$(USEMODULE)))
+  include $(RIOTMAKE)/libc/newlib_nano_pip.mk
+endif
+
 ifneq (,$(filter picolibc,$(USEMODULE)))
   include $(RIOTMAKE)/libc/picolibc.mk
 endif
