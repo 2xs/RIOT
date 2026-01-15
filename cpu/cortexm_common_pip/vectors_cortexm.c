@@ -44,7 +44,8 @@
 #include "dbgpin.h"
 #endif
 
-#include "interface.h"
+#include "crt0_ctx.h"
+#include "pip_crt0_ctx_data.h"
 #include "context.h"
 #include "svc.h"
 
@@ -113,44 +114,46 @@ static void *get_got_addr(void)
 /**
  * @brief   Function that will be called by the crt0.
  */
-void start(interface_t *interface)
+void start(crt0_ctx_t *crt0_ctx)
 {
     void *got_addr;
+    pip_crt0_ctx_data_t *pip_crt0_ctx_data =
+        (pip_crt0_ctx_data_t *)crt0_ctx->argv;
 
 #ifdef MODULE_GNRC_XIPFS
     #define FS_ROUND(x, y) (((x) + (y) - 1) & ~((y) - 1))
     /* initialize the file system */
-    //fs_initialize(interface->unusedRomStart, interface->romEnd);
-    tinyfs_init((void *)0x28000, interface->romEnd);
-    unusedRamStart = (void *)FS_ROUND((uintptr_t)interface->unusedRamStart, 4096);
+    //fs_initialize(crt0_ctx->nvm_start, crt0_ctx->nvm_end);
+    tinyfs_init((void *)0x28000, crt0_ctx->nvm_end);
+    unusedRamStart = crt0_ctx->ram_start + 1024;
 #endif
 
     /* initialization of the heap */
     extern void heap_init(void *start, void *end);
-    heap_init(interface->unusedRamStart, interface->ramEnd);
+    heap_init(crt0_ctx->ram_start, crt0_ctx->ram_start + 1023);
 
     /* initialization of global variables with
      * values only known at runtime */
-    sstack = (uint32_t *)interface->stackLimit;
+    sstack = (uint32_t *)pip_crt0_ctx_data->stackLimit;
 
     /* retrieve the relocated GOT address */
     got_addr = get_got_addr();
 
     extern void cortexm_pip_ctx_init(void *sp, void *sl);
-    cortexm_pip_ctx_init(interface->stackTop, got_addr);
+    cortexm_pip_ctx_init(pip_crt0_ctx_data->stackTop, got_addr);
 
     extern void cortexm_pip_vidt_init(vidt_t *vidt);
-    cortexm_pip_vidt_init(interface->vidtStart);
+    cortexm_pip_vidt_init(pip_crt0_ctx_data->vidtStart);
 
     extern void nrf52_pip_ctx_init(void *sp, void *sl);
-    nrf52_pip_ctx_init(interface->stackTop, got_addr);
+    nrf52_pip_ctx_init(pip_crt0_ctx_data->stackTop, got_addr);
 
     extern void nrf52_pip_vidt_init(vidt_t *vidt);
-    nrf52_pip_vidt_init(interface->vidtStart);
+    nrf52_pip_vidt_init(pip_crt0_ctx_data->vidtStart);
 
-    riotPartDesc = interface->partDescBlockId;
+    riotPartDesc = pip_crt0_ctx_data->partDescBlockId;
 
-    riotVidt = interface->vidtStart;
+    riotVidt = pip_crt0_ctx_data->vidtStart;
 
     riotGotAddr = got_addr;
 

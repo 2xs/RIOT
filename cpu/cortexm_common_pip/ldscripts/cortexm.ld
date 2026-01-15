@@ -150,12 +150,19 @@ SECTIONS
         . = ALIGN(4);
         _end_fw = .;
 
+        . = ALIGN(32);
+        _start_shared_api_code = .;
+        KEEP( *(.shared_api_code))
+        . = ALIGN(32);
+        _end_shared_api_code = .;
+
         . = ALIGN(4);
         . += PADDING;
         __romEnd = .;
     }
 
     __romSize = __romEnd - __romStart;
+    __rom_size = __romSize;
 
     /*
      * The section '.got' must be placed rigth
@@ -176,6 +183,7 @@ SECTIONS
     }
 
     __gotSize = __gotEnd - __gotStart;
+    __got_size = __gotSize;
 
     /*
      * The '.rom.ram' output section collects all
@@ -204,11 +212,18 @@ SECTIONS
         . = ALIGN(4);
 
         . = ALIGN(4);
+        _start_shared_api_data = .;
+        KEEP( *(.shared_api_data))
+        . = ALIGN(32);
+        _end_shared_api_data = .;
+
+        . = ALIGN(4);
         . += PADDING;
         __romRamEnd = .;
     }
 
     __romRamSize = __romRamEnd - __romRamStart;
+    __rom_ram_size = __romRamSize;
 
     /*
      * The '.ram' output section collects all
@@ -246,10 +261,16 @@ SECTIONS
         _sheap1 = .;
         _eheap1 = _sheap1;
 
+
+
         . = ALIGN(4);
         . += PADDING;
         __ramEnd = .;
     }
 
     __ramSize = __ramEnd - __ramStart;
+    __ram_size = __ramSize;
 }
+
+ASSERT(_end_shared_api_code - _start_shared_api_code <= 4096, "shared_api_code does not fit in 4096 bytes")
+ASSERT(_end_shared_api_data - _start_shared_api_data <= 512, "shared_api_data does not fit in 512 bytes")

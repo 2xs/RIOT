@@ -1,7 +1,6 @@
 PKG_NAME    = libpip
 PKG_URL     = https://github.com/2xs/libpip-riot.git
-PKG_VERSION = db4307ae3d30ad6b8aa24c96c00a9e98f91c2fc5
-#PKG_VERSION = 0f117f17f920ec2677807154fc532f4180008552
+PKG_VERSION = d77fb97757d9dc72ab8e6142d1022c8495fd36d1
 PKG_LICENSE = CeCILL-2.1
 
 include $(RIOTBASE)/pkg/pkg.mk

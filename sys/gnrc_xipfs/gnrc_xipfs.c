@@ -241,7 +241,7 @@ tinyfs_create_file(const char *name, uint32_t size, uint32_t exec,
     if (_get_first_free_page_addr(&ffp) != 0)
         return NULL;
 
-    page_size = ROUND(size, FLASHPAGE_SIZE);
+    page_size = ROUND(size + sizeof(file), FLASHPAGE_SIZE);
     next = (char *)ffp + page_size;
 
     /* check if no flash page left */
