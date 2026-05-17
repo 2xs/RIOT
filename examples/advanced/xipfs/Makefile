@@ -27,6 +27,7 @@ USEMODULE += shell_cmds_default
 USEMODULE += ps
 USEMODULE += saul_default
 USEMODULE += cortexm_svc
+USEMODULE += thread_manager
 
 FEATURES_REQUIRED += cortexm_mpu
 

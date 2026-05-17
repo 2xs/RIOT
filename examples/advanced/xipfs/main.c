@@ -26,6 +26,7 @@
 #include "periph/flashpage.h"
 #include "shell.h"
 #include "vfs.h"
+#include "thread_manager.h"
 
 /**
  * @def PANIC
@@ -192,8 +193,10 @@ static void mount_or_format(vfs_xipfs_mount_t *xipfs_mp)
 
 int main(void)
 {
-    char line_buf[SHELL_DEFAULT_BUFSIZE];
 
+    char line_buf[SHELL_DEFAULT_BUFSIZE];
+    printf("Execution de thread_manager_init()\n");
+    thread_manager_init();
     mount_or_format(&nvme0p0);
     mount_or_format(&nvme0p1);
 
