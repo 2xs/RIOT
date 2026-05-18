@@ -153,8 +153,22 @@ int drop_files_handler(int argc, char **argv) {
     return EXIT_SUCCESS;
 }
 
+static int cmd_run(int argc, char **argv)
+{
+    if (argc < 2) {
+        puts("Usage: run <nom_job>");
+        return 1;
+    }
+
+    msg_t msg;
+    msg.content.ptr = argv[1];
+    msg_send(&msg, thread_manager_get_pid());      
+    return 0;
+}
+
 static shell_command_t shell_commands[] = {
     {"drop_files", "Drop example fae files into /nvme0p0", drop_files_handler},
+    {"run", "Run a job", cmd_run},
     {NULL, NULL, NULL},
 };
 
@@ -190,6 +204,8 @@ static void mount_or_format(vfs_xipfs_mount_t *xipfs_mp)
     }
     printf("vfs_mount: \"%s\": OK\n", xipfs_mp->vfs_mp.mount_point);
 }
+
+
 
 int main(void)
 {
