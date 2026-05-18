@@ -1,11 +1,10 @@
-/* sys/thread_manage/thread_manage.c */
 #include <stdio.h>
 //#include "thread.h"
 #include "thread_manager.h"
 #include "msg.h"
 
 #define THREAD_MANAGER_STACKSIZE     (THREAD_STACKSIZE_DEFAULT)
-#define THREAD_MANAGER_PRIORITY      (THREAD_PRIORITY_MAIN + 1)
+#define THREAD_MANAGER_PRIORITY      (THREAD_PRIORITY_MAIN - 1)
 
 static char _stack[THREAD_MANAGER_STACKSIZE];
 
@@ -28,14 +27,14 @@ static void *_thread_manager_run(void *arg)
 
     msg_init_queue(_msg_queue, QUEUE_SIZE);
 
-    puts("[thread_manager] prêt à recevoir des jobs");
+    puts("[thread_manager] prêt à recevoir des taches");
 
     while (1) {
         msg_receive(&msg);
 
         
-        char *job = (char *)msg.content.ptr;
-        printf("[thread_manager] j'exécute le job : %s\n", job);
+        char *task = (char *)msg.content.ptr;
+        printf("[thread_manager] j'exécute la tache: %s\n", task);
     }
 
     return NULL;

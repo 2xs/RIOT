@@ -168,7 +168,7 @@ static int cmd_run(int argc, char **argv)
 
 static shell_command_t shell_commands[] = {
     {"drop_files", "Drop example fae files into /nvme0p0", drop_files_handler},
-    {"run", "Run a job", cmd_run},
+    {"run", "Run a task", cmd_run},
     {NULL, NULL, NULL},
 };
 
