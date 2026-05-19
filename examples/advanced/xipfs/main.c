@@ -153,16 +153,33 @@ int drop_files_handler(int argc, char **argv) {
     return EXIT_SUCCESS;
 }
 
+static task_descriptor_t _tmp_task;
+
 static int cmd_run(int argc, char **argv)
 {
     if (argc < 2) {
-        puts("Usage: run <nom_job>");
+        puts("Usage: run <fichier> [args...]");
         return 1;
     }
 
+    _tmp_task.argc = argc;   /* argc original : "run" + fichier + args */
+
+    /* argv[0] = "execute" pour satisfaire _execute_file_handler */
+    strncpy(_tmp_task.argv_buf[0], "execute", ARGV_BUF_SIZE - 1);
+    _tmp_task.argv[0] = _tmp_task.argv_buf[0];
+
+    /* argv[1..] = le fichier et ses args */
+    for (int i = 1; i < argc && i < ARGV_MAX; i++) {
+        strncpy(_tmp_task.argv_buf[i], argv[i], ARGV_BUF_SIZE - 1);
+        _tmp_task.argv_buf[i][ARGV_BUF_SIZE - 1] = '\0';
+        _tmp_task.argv[i] = _tmp_task.argv_buf[i];
+    }
+    _tmp_task.argv[argc] = NULL;
+
     msg_t msg;
-    msg.content.ptr = argv[1];
-    msg_send(&msg, thread_manager_get_pid());      
+    msg.content.ptr = &_tmp_task;
+    msg_send(&msg, thread_manager_get_pid());
+
     return 0;
 }
 

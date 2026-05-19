@@ -42,7 +42,7 @@ static void print_execute_file_usage(void) {
 #endif /* XIPFS_ENABLE_SAFE_EXEC_SUPPORT */
 }
 
-static int _execute_file_handler(int argc, char **argv) {
+int _execute_file_handler(int argc, char **argv) {
     int exe_filename_arg_pos = 1;
     const char *exe_filename;
 
