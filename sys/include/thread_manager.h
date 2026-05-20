@@ -2,19 +2,24 @@
 #define THREAD_MANAGER_H
 
 #include "thread.h"
+#include "list.h"
 #include <stdbool.h>
 
 #define THREAD_MANAGER_MAX_TASK  4
 #define JOB_STACKSIZE           (THREAD_STACKSIZE_DEFAULT * 4)
 #define ARGV_MAX                8
 #define ARGV_BUF_SIZE           64
+#define QUANTUM_MS  2000
 
 typedef struct {
-    char   argv_buf[ARGV_MAX][ARGV_BUF_SIZE]; 
-    char  *argv[ARGV_MAX + 1];                
-    int    argc;
-    char   stack[JOB_STACKSIZE];
-    bool   used;
+    list_node_t  list_node;
+    char         argv_buf[ARGV_MAX][ARGV_BUF_SIZE];
+    char        *argv[ARGV_MAX + 1];
+    int          argc;
+    kernel_pid_t pid;       
+    char         stack[JOB_STACKSIZE];
+    bool         used;
+    bool         state;
 } task_descriptor_t;
 
 /**

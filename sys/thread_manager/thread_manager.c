@@ -3,17 +3,25 @@
 #include <stdbool.h>
 #include "thread_manager.h"
 #include "msg.h"
+#include "ztimer.h"
+#include "mutex.h"
 
-#define THREAD_MANAGER_STACKSIZE  (THREAD_STACKSIZE_DEFAULT * 2)
+#define THREAD_MANAGER_STACKSIZE  (THREAD_STACKSIZE_DEFAULT)
+#define SCHEDULER_STACKSIZE       (THREAD_STACKSIZE_DEFAULT)
 #define THREAD_MANAGER_PRIORITY   (THREAD_PRIORITY_MAIN - 1)
-#define JOB_PRIORITY              (THREAD_PRIORITY_MAIN + 1)
+#define SCHEDULER_PRIORITY  (THREAD_PRIORITY_MAIN - 2)
+#define JOB_PRIORITY        (THREAD_PRIORITY_MAIN + 1)
 #define QUEUE_SIZE                THREAD_MANAGER_MAX_TASK
 
 static char             _stack[THREAD_MANAGER_STACKSIZE];
+static char              _scheduler_stack[SCHEDULER_STACKSIZE];
+
 static msg_t            _msg_queue[QUEUE_SIZE];
 static kernel_pid_t     _tm_pid = KERNEL_PID_UNDEF;
 static task_descriptor_t _jobs[THREAD_MANAGER_MAX_TASK];
 
+list_node_t runqueue;
+static mutex_t runqueue_mutex = MUTEX_INIT;
 
 kernel_pid_t thread_manager_get_pid(void) { return _tm_pid; }
 
@@ -47,18 +55,27 @@ static void *_job_run(void *arg)
 
     printf("[job:%s] je demarre la tache\n", task->argv[0]);
 
-    
+    thread_sleep();
+
     int ret = _execute_file_handler(task->argc, task->argv);
     if (ret < 0) {
         printf("[job:%s] erreur : %d\n", task->argv[0], ret);
     }
 
+
+    printf("[job:%s] je termine la tache, je dors 5 secondes pour simuler du travail\n", task->argv[0]);
+    ztimer_sleep(ZTIMER_MSEC, 5000);
+
+
     printf("[job:%s] terminé\n", task->argv[0]);
+
+    mutex_lock(&runqueue_mutex);
     task->used = 0;
+    mutex_unlock(&runqueue_mutex);
     return NULL;
 }
 
-/
+
 static void *_thread_manager_run(void *arg)
 {
     (void)arg;
@@ -75,8 +92,11 @@ static void *_thread_manager_run(void *arg)
         printf("[thread_manager] job reçu : %s (%d args)\n",
                incoming->argv[0], incoming->argc);
 
+        mutex_lock(&runqueue_mutex);
+
         task_descriptor_t *slot = _get_free_slot();
         if (!slot) {
+            mutex_unlock(&runqueue_mutex);
             printf("[thread_manager] Le slot est plein pour le job '%s', refuse\n",
                    incoming->argv[0]);
             continue;
@@ -85,6 +105,10 @@ static void *_thread_manager_run(void *arg)
         
         _copy_task(slot, incoming);
         slot->used = true;
+        slot->state = false;
+
+        list_add(&runqueue, &slot->list_node);
+        mutex_unlock(&runqueue_mutex);
 
         thread_create(
             slot->stack,
@@ -96,9 +120,56 @@ static void *_thread_manager_run(void *arg)
             slot->argv[0]
         );
 
+        
+
         printf("[thread_manager] thread créé pour '%s'\n", slot->argv[0]);
     }
 
+    return NULL;
+}
+
+static void *_thread_manager_scheduler_run(void *arg)
+{
+    (void)arg;
+
+    while (1) {
+
+        mutex_lock(&runqueue_mutex);
+        list_node_t *node = runqueue.next;
+        mutex_unlock(&runqueue_mutex);
+
+        if (node == NULL) {
+            ztimer_sleep(ZTIMER_MSEC, 100);
+            continue;
+        }
+
+        while (node) {
+            mutex_lock(&runqueue_mutex);
+
+            task_descriptor_t *task = (task_descriptor_t *)(void *) ((char *)node - offsetof(task_descriptor_t, list_node));
+            list_node_t *next = node->next;  
+
+            if (!task->used) {
+                list_remove(&runqueue, node);
+                mutex_unlock(&runqueue_mutex);
+                node = next;
+                continue;
+            }
+
+            kernel_pid_t pid = task->pid;
+            mutex_unlock(&runqueue_mutex);
+
+            
+            printf("[scheduler] quantum → job %s (PID=%d)\n",task->argv[0], pid);
+
+            
+            thread_wakeup(pid);
+            ztimer_sleep(ZTIMER_MSEC, QUANTUM_MS);
+
+    
+            node = next;
+        }
+    }
     return NULL;
 }
 
@@ -106,6 +177,7 @@ static void *_thread_manager_run(void *arg)
 void thread_manager_init(void)
 {
     memset(_jobs, 0, sizeof(_jobs));
+    runqueue.next = NULL;
 
     _tm_pid = thread_create(
         _stack,
@@ -115,6 +187,16 @@ void thread_manager_init(void)
         _thread_manager_run,
         NULL,
         "thread_manager"
+    );
+
+    thread_create(
+        _scheduler_stack,
+        sizeof(_scheduler_stack),
+        SCHEDULER_PRIORITY,
+        THREAD_CREATE_STACKTEST,
+        _thread_manager_scheduler_run,
+        NULL,
+        "thread_manager_scheduler"
     );
 
     printf("[thread_manager] initialisation, PID=%d\n", _tm_pid);

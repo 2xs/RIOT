@@ -80,6 +80,11 @@ XIPFS_NEW_PARTITION(nvme0p1, "/nvme0p1", NVME0P1_PAGE_NUM);
 #define FILENAME_OF_DUMPER_FAE  "/nvme0p0/dumper.fae"
 #define SIZEOF_DUMPER_FAE       (sizeof(dumper_fae) / sizeof(dumper_fae[0]))
 
+#include "blob/normal.fae.h"
+
+#define FILENAME_OF_NORMAL_FAE  "/nvme0p0/normal.fae"
+#define SIZEOF_NORMAL_FAE       (sizeof(normal_fae) / sizeof(normal_fae[0]))
+
 typedef struct {
     const char *filename;
     const int   bytesize;
@@ -87,9 +92,10 @@ typedef struct {
     const bool is_executable;
 } file_to_drop_t;
 
-static const file_to_drop_t files_to_drop[2] = {
+static const file_to_drop_t files_to_drop[3] = {
     {FILENAME_OF_HELLO_WORLD_FAE, SIZEOF_HELLO_WORLD_FAE, hello_world_fae, true },
     {FILENAME_OF_DUMPER_FAE, SIZEOF_DUMPER_FAE, dumper_fae, true },
+        {FILENAME_OF_NORMAL_FAE, SIZEOF_NORMAL_FAE, normal_fae, true },
 };
 
 static int drop_file(const file_to_drop_t *file_to_drop) {
@@ -158,17 +164,16 @@ static task_descriptor_t _tmp_task;
 static int cmd_run(int argc, char **argv)
 {
     if (argc < 2) {
-        puts("Usage: run <fichier> [args...]");
+        puts("Usage: run <nom du fichier> [args...]");
         return 1;
     }
 
-    _tmp_task.argc = argc;   /* argc original : "run" + fichier + args */
+    _tmp_task.argc = argc;  
 
-    /* argv[0] = "execute" pour satisfaire _execute_file_handler */
+    
     strncpy(_tmp_task.argv_buf[0], "execute", ARGV_BUF_SIZE - 1);
     _tmp_task.argv[0] = _tmp_task.argv_buf[0];
 
-    /* argv[1..] = le fichier et ses args */
     for (int i = 1; i < argc && i < ARGV_MAX; i++) {
         strncpy(_tmp_task.argv_buf[i], argv[i], ARGV_BUF_SIZE - 1);
         _tmp_task.argv_buf[i][ARGV_BUF_SIZE - 1] = '\0';

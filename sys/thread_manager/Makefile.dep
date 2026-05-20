@@ -1,0 +1,4 @@
+ifneq (,$(filter thread_manager,$(USEMODULE)))
+    USEMODULE += ztimer
+    USEMODULE += ztimer_msec
+endif

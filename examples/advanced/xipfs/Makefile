@@ -20,6 +20,8 @@ TOOLCHAINS_BLACKLIST += llvm
 
 BLOBS += hello-world.fae
 BLOBS += dumper.fae
+BLOBS += normal.fae
+BLOBS += led.fae
 
 # Modules to include:
 USEMODULE += shell
