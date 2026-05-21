@@ -5,8 +5,8 @@
 #include "list.h"
 #include <stdbool.h>
 
-#define THREAD_MANAGER_MAX_TASK  4
-#define JOB_STACKSIZE           (THREAD_STACKSIZE_DEFAULT * 4)
+#define THREAD_MANAGER_MAX_TASK  8
+#define JOB_STACKSIZE           (THREAD_STACKSIZE_DEFAULT *2)
 #define ARGV_MAX                8
 #define ARGV_BUF_SIZE           64
 #define QUANTUM_MS  2000
