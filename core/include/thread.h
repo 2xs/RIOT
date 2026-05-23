@@ -361,6 +361,7 @@ thread_status_t thread_getstatus(kernel_pid_t pid);
  * @brief Puts the current thread into sleep mode. Has to be woken up externally.
  */
 void thread_sleep(void);
+void thread_suspend_by_pid(kernel_pid_t pid);
 
 /**
  * @brief   Lets current thread yield.

@@ -119,6 +119,26 @@ void thread_sleep(void)
     thread_yield_higher();
 }
 
+void thread_suspend_by_pid(kernel_pid_t pid)
+{
+    if (irq_is_in()) {
+        return;
+    }
+
+    unsigned state = irq_disable();
+
+    
+    thread_t *thread = thread_get(pid);
+    if (thread != NULL) {
+        sched_set_status(thread, STATUS_SLEEPING);
+    }
+
+    irq_restore(state);
+
+    
+    thread_yield_higher();
+}
+
 int thread_wakeup(kernel_pid_t pid)
 {
     DEBUG("thread_wakeup: Trying to wakeup PID %" PRIkernel_pid "...\n", pid);
