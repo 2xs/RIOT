@@ -159,31 +159,24 @@ int drop_files_handler(int argc, char **argv) {
     return EXIT_SUCCESS;
 }
 
-static task_descriptor_t _tmp_task;
+
+static task_descriptor_t _tmp;
 
 static int cmd_run(int argc, char **argv)
 {
-    if (argc < 2) {
-        puts("Usage: run <nom du fichier> [args...]");
-        return 1;
+    if (argc < 2) { puts("Usage: run <fichier>"); return 1; }
+
+    memset(&_tmp, 0, sizeof(_tmp));
+    _tmp.argc = argc - 1;
+
+    /* argv[0] = chemin du fichier directement */
+    for (int i = 0; i < _tmp.argc && i < ARGV_MAX; i++) {
+        strncpy(_tmp.argv_buf[i], argv[i + 1], ARGV_BUF_SIZE - 1);
+        _tmp.argv[i] = _tmp.argv_buf[i];
     }
+    _tmp.argv[_tmp.argc] = NULL;
 
-    _tmp_task.argc = argc;  
-
-    
-    strncpy(_tmp_task.argv_buf[0], "execute", ARGV_BUF_SIZE - 1);
-    _tmp_task.argv[0] = _tmp_task.argv_buf[0];
-
-    for (int i = 1; i < argc && i < ARGV_MAX; i++) {
-        strncpy(_tmp_task.argv_buf[i], argv[i], ARGV_BUF_SIZE - 1);
-        _tmp_task.argv_buf[i][ARGV_BUF_SIZE - 1] = '\0';
-        _tmp_task.argv[i] = _tmp_task.argv_buf[i];
-    }
-    _tmp_task.argv[argc] = NULL;
-
-    msg_t msg;
-    msg.content.ptr = &_tmp_task;
-    msg_send(&msg, thread_manager_get_pid());
+    thread_manager_add_task(&_tmp); 
 
     return 0;
 }
