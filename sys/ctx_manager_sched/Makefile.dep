@@ -1,0 +1,9 @@
+ifneq (,$(filter ctx_manager_sched,$(USEMODULE)))
+  USEMODULE += xipfs
+  USEMODULE += core_thread
+  USEMODULE += core_thread_flags
+  USEMODULE += core_mutex
+  USEMODULE += ztimer
+  USEMODULE += ztimer_msec
+  USEMODULE += ztimer_periodic
+endif

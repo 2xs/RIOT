@@ -29,7 +29,10 @@ USEMODULE += shell_cmds_default
 USEMODULE += ps
 USEMODULE += saul_default
 USEMODULE += cortexm_svc
-USEMODULE += thread_manager
+USEMODULE += ctx_manager_sched
+#USEMODULE += ztimer
+#USEMODULE += ztimer_msec
+
 
 FEATURES_REQUIRED += cortexm_mpu
 
@@ -40,5 +43,7 @@ USEMODULE += xipfs
 CFLAGS += -DXIPFS_ENABLE_SAFE_EXEC_SUPPORT
 # XIPFS MPU ISR stack requirement
 CFLAGS += -DISR_STACKSIZE=1024
+
+CFLAGS += -DEXEC_STACKSIZE_DEFAULT=THREAD_STACKSIZE_DEFAULT
 
 include $(RIOTBASE)/Makefile.include

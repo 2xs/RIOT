@@ -19,14 +19,17 @@
  * @}
  */
 
+#include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
+
 
 #include "fs/xipfs_fs.h"
 #include "periph/flashpage.h"
 #include "shell.h"
 #include "vfs.h"
-#include "thread_manager.h"
+#include "ctx_manager_sched.h"
 
 /**
  * @def PANIC
@@ -159,31 +162,49 @@ int drop_files_handler(int argc, char **argv) {
     return EXIT_SUCCESS;
 }
 
-
-static task_descriptor_t _tmp;
-
-static int cmd_run(int argc, char **argv)
+static int sched_add_handler(int argc, char **argv)
 {
-    if (argc < 2) { puts("Usage: run <fichier>"); return 1; }
-
-    memset(&_tmp, 0, sizeof(_tmp));
-    _tmp.argc = argc - 1;
-
-    /* argv[0] = chemin du fichier directement */
-    for (int i = 0; i < _tmp.argc && i < ARGV_MAX; i++) {
-        strncpy(_tmp.argv_buf[i], argv[i + 1], ARGV_BUF_SIZE - 1);
-        _tmp.argv[i] = _tmp.argv_buf[i];
+    if (argc < 2) {
+        printf("Usage: sched_add <path>\n"
+               "  ex : sched_add /nvme0p0/hello-world.fae\n");
+        return EXIT_FAILURE;
     }
-    _tmp.argv[_tmp.argc] = NULL;
-
-    thread_manager_add_task(&_tmp); 
-
-    return 0;
+ 
+    int ret = ctx_sched_enqueue(argv[1]);
+    ret=0;
+    switch (ret) {
+    case 0:
+        /* succès — message déjà imprimé par ctx_sched_enqueue */
+        break;
+    case -ENOENT:
+        printf("sched_add: '%s' introuvable\n", argv[1]);
+        return EXIT_FAILURE;
+    case -EACCES:
+        printf("sched_add: '%s' non exécutable\n", argv[1]);
+        return EXIT_FAILURE;
+    case -ENOMEM:
+        printf("sched_add: run-queue pleine\n");
+        return EXIT_FAILURE;
+    default:
+        printf("sched_add: erreur %d\n", ret);
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
 }
+
+
+static int sched_run_handler(int argc, char **argv)
+{
+    (void)argc; (void)argv;
+    ctx_sched_start();
+    return EXIT_SUCCESS;
+}
+ 
 
 static shell_command_t shell_commands[] = {
     {"drop_files", "Drop example fae files into /nvme0p0", drop_files_handler},
-    {"run", "Run a task", cmd_run},
+    {"sched_add", "Add a context", sched_add_handler},
+    {"sched_run", "Start the context scheduler", sched_run_handler},
     {NULL, NULL, NULL},
 };
 
@@ -224,14 +245,16 @@ static void mount_or_format(vfs_xipfs_mount_t *xipfs_mp)
 
 int main(void)
 {
-
     char line_buf[SHELL_DEFAULT_BUFSIZE];
-    printf("Execution de thread_manager_init()\n");
-    thread_manager_init();
+
+    printf("[main] ctx_sched_init()\n");
+    ctx_sched_init();
     mount_or_format(&nvme0p0);
     mount_or_format(&nvme0p1);
 
-    shell_run(shell_commands, line_buf, SHELL_DEFAULT_BUFSIZE);
+    shell_run(shell_commands,
+              line_buf,
+              SHELL_DEFAULT_BUFSIZE);
 
     return 0;
 }

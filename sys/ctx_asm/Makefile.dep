@@ -1,0 +1,13 @@
+ifneq (,$(filter ctx_manager_sched,$(USEMODULE)))
+  USEMODULE += xipfs
+  USEMODULE += core_thread
+  USEMODULE += core_thread_flags
+  USEMODULE += core_mutex
+  USEMODULE += ztimer
+  USEMODULE += ztimer_msec
+  USEMODULE += ztimer_periodic
+
+  SRC += ctx_manager_sched.c
+  SRC += ctx_switch.S
+  SRC += ctx_first_launch.S
+endif
