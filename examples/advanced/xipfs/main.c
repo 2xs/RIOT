@@ -193,6 +193,7 @@ static int sched_add_handler(int argc, char **argv)
 }
 
 
+
 static int sched_run_handler(int argc, char **argv)
 {
     (void)argc; (void)argv;
@@ -200,11 +201,22 @@ static int sched_run_handler(int argc, char **argv)
     return EXIT_SUCCESS;
 }
  
+static int exec_handler(int argc, char **argv)
+{
+    if (argc < 2) {
+        printf("Usage: exec <path>\n");
+        return EXIT_FAILURE;
+    }
+    return ctx_exec(argv[1]) < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
+}
+
+
 
 static shell_command_t shell_commands[] = {
     {"drop_files", "Drop example fae files into /nvme0p0", drop_files_handler},
     {"sched_add", "Add a context", sched_add_handler},
     {"sched_run", "Start the context scheduler", sched_run_handler},
+    {"exec", "Execute a .fae directly", exec_handler},
     {NULL, NULL, NULL},
 };
 
@@ -248,7 +260,7 @@ int main(void)
     char line_buf[SHELL_DEFAULT_BUFSIZE];
 
     printf("[main] ctx_sched_init()\n");
-    ctx_sched_init();
+    ctx_sched_init(&nvme0p0);
     mount_or_format(&nvme0p0);
     mount_or_format(&nvme0p1);
 

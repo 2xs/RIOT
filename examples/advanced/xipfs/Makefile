@@ -30,6 +30,7 @@ USEMODULE += ps
 USEMODULE += saul_default
 USEMODULE += cortexm_svc
 USEMODULE += ctx_manager_sched
+#USEMODULE += kernel
 #USEMODULE += ztimer
 #USEMODULE += ztimer_msec
 
