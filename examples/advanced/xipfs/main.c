@@ -30,6 +30,7 @@
 #include "shell.h"
 #include "vfs.h"
 #include "ctx_manager_sched.h"
+#include "sched_round_robin.h" 
 
 /**
  * @def PANIC
@@ -258,7 +259,7 @@ static void mount_or_format(vfs_xipfs_mount_t *xipfs_mp)
 int main(void)
 {
     char line_buf[SHELL_DEFAULT_BUFSIZE];
-
+   // sched_round_robin_init();
     printf("[main] ctx_sched_init()\n");
     ctx_sched_init(&nvme0p0);
     mount_or_format(&nvme0p0);

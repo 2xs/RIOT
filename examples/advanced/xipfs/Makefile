@@ -30,6 +30,7 @@ USEMODULE += ps
 USEMODULE += saul_default
 USEMODULE += cortexm_svc
 USEMODULE += ctx_manager_sched
+USEMODULE += sched_round_robin
 #USEMODULE += kernel
 #USEMODULE += ztimer
 #USEMODULE += ztimer_msec
@@ -45,6 +46,5 @@ CFLAGS += -DXIPFS_ENABLE_SAFE_EXEC_SUPPORT
 # XIPFS MPU ISR stack requirement
 CFLAGS += -DISR_STACKSIZE=1024
 
-CFLAGS += -DEXEC_STACKSIZE_DEFAULT=THREAD_STACKSIZE_DEFAULT
 
 include $(RIOTBASE)/Makefile.include
